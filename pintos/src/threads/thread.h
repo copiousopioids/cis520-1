@@ -26,6 +26,7 @@ typedef int tid_t;
 
 // Add enum? Add union?
 struct blocked_thread {
+  bool sleeping;
   int wakeup_time_sleep;
 };
 
@@ -90,6 +91,7 @@ struct thread
     /* Owned by thread.c. */
     tid_t tid;                          /* Thread identifier. */
     enum thread_status status;          /* Thread state. */
+    struct blocked_thread blocked;      /* Extra data for blocked thread */ 
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
