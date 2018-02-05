@@ -1,7 +1,7 @@
 
 CIS 520 - Programming Project #1
 
-                   
+
 ---- GROUP ----
 
 >> Fill in the names and email addresses of your group members.
@@ -134,4 +134,3 @@ ticks   A   B   C   A   B   C   to run
 >> disadvantages in your design choices.  If you were to have extra
 >> time to work on this part of the project, how might you choose to
 >> refine or improve your design?
-
