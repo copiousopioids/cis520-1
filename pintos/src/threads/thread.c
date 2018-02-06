@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -62,6 +63,9 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
+
+static void try_wake_up_sleeping_threads (void);
+static bool sleeping_thread_less_func (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
 static void kernel_thread (thread_func *, void *aux);
 
@@ -121,24 +125,69 @@ thread_start (void)
   sema_down (&idle_started);
 }
 
-static void try_wake_up_sleeping_threads(void) 
+
+/* Wakes up all sleeping threads whose sleeping_ticks value has 
+    surpassed the global tick count */
+static void 
+try_wake_up_sleeping_threads(void) 
 {
+  // Global ticks
   int64_t ticks = timer_ticks();
-  while ( !list_empty( &sleeping_list ) ) 
-    {
-      struct list_elem *front = list_front( &sleeping_list );
-      struct thread *t = list_entry( front, struct thread, elem );
-      if ( t->sleeping_ticks > ticks ) 
+
+  // While the list is not empty, checks the thread at the front of the list to see 
+  //  if it needs to be woken up
+  while (true) 
+  {
+      if (list_empty(&sleeping_list)) 
         {
-          // sleeping_list sorted by ascending wakeup time. Therefore if
-          // the first wake up is in the future, then all of them are.
           return;
         }
+      struct list_elem *front = list_front( &sleeping_list );
+      struct thread *t = list_entry( front, struct thread, elem );
+      // Since sleeping_list is ordered by wakeup time, if the front 
+      //  element doesn't need to be woken up, then none of them do
+      if ( t->sleeping_ticks > ticks )
+          return;
       // Must pop from blocked sleeping list before adding thread to the ready list.
-      // Otherwise thread.elem will be in 2 lists simultaneously, which isn't allowed.
+      //  Otherwise thread.elem will be in 2 lists simultaneously, which isn't allowed.
       list_pop_front(&sleeping_list);
       thread_unblock(t);
     }
+}
+
+/* Compare the wake up/sleeping times to determine which thread 
+    should wake up first */
+static bool 
+sleeping_thread_less_func
+  (
+  const struct list_elem *a,
+  const struct list_elem *b,
+  void *aux UNUSED
+  )
+{
+  struct thread *thread_a = list_entry(a, struct thread, elem);
+  struct thread *thread_b = list_entry(b, struct thread, elem);
+
+  return thread_a->sleeping_ticks < thread_b->sleeping_ticks;
+}
+
+void
+thread_sleep_until (int64_t ticks) 
+{
+  struct thread *cur = thread_current ();
+  enum intr_level old_level;
+
+  ASSERT (!intr_context ());
+
+  old_level = intr_disable ();
+  cur->status = THREAD_BLOCKED;
+  cur->sleeping_ticks = ticks;
+  // Can't put idle thread to sleep
+  if (cur != idle_thread)
+    list_insert_ordered(&sleeping_list, &cur->elem, sleeping_thread_less_func, NULL);
+
+  schedule ();
+  intr_set_level (old_level);
 }
 
 /* Called by the timer interrupt handler at each timer tick.
