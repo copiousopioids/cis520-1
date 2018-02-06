@@ -145,6 +145,8 @@ thread_tick (void)
 {
   struct thread *t = thread_current ();
 
+  try_wake_up_sleeping_threads();
+
   /* Update statistics. */
   if (t == idle_thread)
     idle_ticks++;
