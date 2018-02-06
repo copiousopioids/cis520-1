@@ -24,6 +24,10 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+/* List of processes in THREAD_BLOCKED state, that is, processes
+   that are have been put to sleep for 'x' ticks. */
+static struct list sleeping_list;
+
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
@@ -115,6 +119,23 @@ thread_start (void)
 
   /* Wait for the idle thread to initialize idle_thread. */
   sema_down (&idle_started);
+}
+
+static void try_wake_up_sleeping_threads(void) {
+  int64_t ticks = timer_ticks();
+  while ( list_empty( &sleeping_list ) ) {
+    struct list_elem *front = list_front( &sleeping_list );
+    struct thread *t = list_entry( front, struct thread, elem );
+    if ( t->sleeping_ticks > ticks ) {
+      // sleeping_list sorted by ascending wakeup time. Therefore if
+      // the first wake up is in the future, then all of them are.
+      return;
+    }
+    // Must pop from blocked sleeping list before adding thread to the ready list.
+    // Otherwise thread.elem will be in 2 lists simultaneously, which isn't allowed.
+    list_pop_front(&sleeping_list);
+    thread_unblock(t);
+  }
 }
 
 /* Called by the timer interrupt handler at each timer tick.
