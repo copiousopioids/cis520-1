@@ -114,6 +114,7 @@ void thread_init (void);
 void thread_start (void);
 
 void thread_sleep_until (int64_t ticks);
+void try_wake_up_sleeping_threads (int64_t global_ticks);
 void thread_tick (void);
 void thread_print_stats (void);
 

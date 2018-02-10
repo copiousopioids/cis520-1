@@ -11,7 +11,6 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
-#include "devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -64,7 +63,6 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
-static void try_wake_up_sleeping_threads (void);
 static bool sleeping_thread_less_func (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
 static void kernel_thread (thread_func *, void *aux);
@@ -129,12 +127,9 @@ thread_start (void)
 
 /* Wakes up all sleeping threads whose sleeping_ticks value has
     surpassed the global tick count */
-static void
-try_wake_up_sleeping_threads(void)
+void
+try_wake_up_sleeping_threads( int64_t global_ticks)
 {
-  // Global ticks
-  int64_t ticks = timer_ticks();
-
   // While the list is not empty, checks the thread at the front of the list to see
   //  if it needs to be woken up
   while (!list_empty(&sleeping_list))
@@ -143,7 +138,7 @@ try_wake_up_sleeping_threads(void)
       struct thread *t = list_entry( front, struct thread, elem );
       // Since sleeping_list is ordered by wakeup time, if the front
       //  element doesn't need to be woken up, then none of them do
-      if ( t->sleeping_ticks > ticks )
+      if ( t->sleeping_ticks > global_ticks )
           return;
       // Must pop from blocked sleeping list before adding thread to the ready list.
       //  Otherwise thread.elem will be in 2 lists simultaneously, which isn't allowed.
@@ -193,8 +188,6 @@ void
 thread_tick (void)
 {
   struct thread *t = thread_current ();
-
-  try_wake_up_sleeping_threads();
 
   /* Update statistics. */
   if (t == idle_thread)
