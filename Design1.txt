@@ -29,6 +29,39 @@ Zachary Marcolesco	<zmarcolesco@ksu.edu>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+thread.h:
+ - Add declaration for "void thread_sleep_until()"
+    Add this declaration so that timer.c can have access to the function declared in thread.c
+
+ - Add "int64_t sleeping_ticks;" to the thread structure 
+    Add this variable to keep track of how long the thread is supposed to sleep.
+    
+thread.c
+ - Add "static struct list sleeping_list;"
+    Create this list to keep track of sleeping threads.
+ 
+ - Add declaration and definition of "static void try_wake_up_sleeping_threads (void);"
+    This function is called in thread_tick() to check if any threads are ready to be woken up.
+  
+ - Add declaration and definition of "static bool sleeping_thread_less_func (...);"
+    This function compares the "sleeping_ticks" of two threads and returns a < b.
+    
+ - Define "void thread_sleep_until()"
+    This function is called in timer.c. It will set the "sleeping_ticks" variable and add thread to sleeping_list
+    
+ - Add call to "try_wake_up_sleeping_threads()" in "thread_tick()"
+    This is to check for any threads that are ready to be woken up after a tick.
+    
+timer.c
+ - In timer.c, removed yield and added check for tick count: 
+
+  if (ticks > 0)
+  {
+    int64_t start = timer_ticks ();
+
+    ASSERT (intr_get_level () == INTR_ON);
+    thread_sleep_until (start + ticks);
+  }
 
 ---- ALGORITHMS ----
 
