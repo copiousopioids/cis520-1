@@ -137,12 +137,8 @@ try_wake_up_sleeping_threads(void)
 
   // While the list is not empty, checks the thread at the front of the list to see
   //  if it needs to be woken up
-  while (true)
+  while (!list_empty(&sleeping_list))
   {
-      if (list_empty(&sleeping_list))
-        {
-          return;
-        }
       struct list_elem *front = list_front( &sleeping_list );
       struct thread *t = list_entry( front, struct thread, elem );
       // Since sleeping_list is ordered by wakeup time, if the front
