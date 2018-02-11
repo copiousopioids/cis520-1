@@ -166,6 +166,21 @@ sleeping_thread_less_func
   return thread_a->sleeping_ticks < thread_b->sleeping_ticks;
 }
 
+static bool
+priority_thread_less_func
+  (
+  const struct list_elem *a,
+  const struct list_elem *b,
+  void *aux UNUSED
+  )
+{
+  struct thread *thread_a = list_entry(a, struct thread, elem);
+  struct thread *thread_b = list_entry(b, struct thread, elem);
+  
+  return thread_a->priority < thread_b->priority;
+}
+  
+
 void
 thread_sleep_until (int64_t ticks)
 {
