@@ -113,8 +113,6 @@ extern bool thread_mlfqs;
 void thread_init (void);
 void thread_start (void);
 
-void thread_sleep_until (int64_t ticks);
-void try_wake_up_sleeping_threads (int64_t global_ticks);
 void thread_tick (void);
 void thread_print_stats (void);
 
@@ -142,5 +140,10 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+//PROJ 1 ADDED FUNCTIONS
+
+void thread_sleep_until (int64_t ticks);
+void try_wake_up_sleeping_threads (int64_t global_ticks);
 
 #endif /* threads/thread.h */
