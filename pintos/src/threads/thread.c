@@ -197,10 +197,9 @@ static void max_pri_check(void)
           intr_yield_on_return();
         }
     return;
-
+  }
     if (thread_current()->priority < front_thread->priority)
       thread_yield();
-  }
 }
 
 
@@ -343,8 +342,8 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  
- /* Changed list insertion so that ready threads are ordered by priority 
+
+ /* Changed list insertion so that ready threads are ordered by priority
 	Old way: list_push_back (&ready_list, &t->elem); */
   list_insert_ordered(&ready_list, &t->elem, (list_less_func *) &priority_thread_less_func, NULL);
   t->status = THREAD_READY;
