@@ -63,7 +63,9 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
+//Comparison functions (to be used in the list_insert_ordered function calls)
 static bool sleeping_thread_less_func (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+static bool priority_thread_less_func(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
 static void kernel_thread (thread_func *, void *aux);
 
@@ -317,7 +319,10 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  
+ /* Changed list insertion so that ready threads are ordered by priority 
+	Old way: list_push_back (&ready_list, &t->elem); */
+  list_insert_ordered(&ready_list, &t->elem, (list_less_func *) &priority_thread_less_func, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -388,7 +393,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread)
-    list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered(&ready_list, &cur->elem, (list_less_func *) &priority_thread_less_func, NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
