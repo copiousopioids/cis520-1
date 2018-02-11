@@ -80,7 +80,13 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
-static void max_pri_check (void);
+//PROJ 1 ADDED FUNCTIONS
+
+static void max_priority_check (void);
+
+//Comparison functions (to be used in the list_insert_ordered function calls)
+static bool sleeping_thread_less_func (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+static bool priority_thread_less_func(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -182,25 +188,30 @@ priority_thread_less_func
   return thread_a->priority < thread_b->priority;
 }
 
-static void max_pri_check(void)
+/*Checks to make sure the current thread does not need to be replaced by another thread (either 
+  because there is a thread with higher priority or because the thread has used up its time)*/
+static void 
+max_priority_check (void)
 {
-  if (list_empty(&ready_list)) return;
+  if (list_empty(&ready_list)) 
+    return;
 
-  struct thread *front_thread = list_entry(list_front(&ready_list), struct thread, elem);
+  struct thread *front_thread = list_entry (list_front(&ready_list), struct thread, elem);
 
   if (intr_context())
-  {
-    thread_ticks++;
-    if (front_thread->priority > thread_current() -> priority ||
-        (thread_ticks >= TIME_SLICE && thread_current()->priority == front_thread->priority))
+    {
+      thread_ticks++;
+      if (front_thread->priority > thread_current() -> priority ||
+         (thread_ticks >= TIME_SLICE && thread_current()->priority == front_thread->priority))
         {
           intr_yield_on_return();
         }
-    return;
+
+      return;
+    }
 
     if (thread_current()->priority < front_thread->priority)
       thread_yield();
-  }
 }
 
 
