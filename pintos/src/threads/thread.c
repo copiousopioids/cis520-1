@@ -176,10 +176,31 @@ priority_thread_less_func
 {
   struct thread *thread_a = list_entry(a, struct thread, elem);
   struct thread *thread_b = list_entry(b, struct thread, elem);
-  
+
   return thread_a->priority < thread_b->priority;
 }
-  
+
+static void max_pri_check(void)
+{
+  if (list_empty(&ready_list)) return;
+
+  struct thread *front_thread = list_entry(list_front(&ready_list), struct thread, elem);
+
+  if (intr_context())
+  {
+    thread_ticks++;
+    if (front_thread->priority > thread_current() -> priority ||
+        (thread_ticks >= TIME_SLICE && thread_current()->priority == front_thread->priority))
+        {
+          intr_yield_on_return();
+        }
+    return;
+
+    if (thread_current()->priority < front_thread->priority)
+      thread_yield();
+  }
+}
+
 
 void
 thread_sleep_until (int64_t ticks)
@@ -661,6 +682,8 @@ allocate_tid (void)
 
   return tid;
 }
+
+
 
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
