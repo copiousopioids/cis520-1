@@ -201,15 +201,10 @@ max_priority_check (void)
         {
           intr_yield_on_return();
         }
-<<<<<<< HEAD
 
       return;
     }
 
-=======
-    return;
-  }
->>>>>>> 4897a1094f7621b7fb80de35e3276da9ff97a95d
     if (thread_current()->priority < front_thread->priority)
       thread_yield();
 }
