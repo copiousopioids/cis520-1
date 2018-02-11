@@ -63,12 +63,7 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
-//Comparison functions (to be used in the list_insert_ordered function calls)
-static bool sleeping_thread_less_func (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
-static bool priority_thread_less_func(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
-
 static void kernel_thread (thread_func *, void *aux);
-
 
 static void idle (void *aux UNUSED);
 static struct thread *running_thread (void);
