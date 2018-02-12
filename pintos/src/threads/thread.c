@@ -359,7 +359,23 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority)
 {
-  thread_current ()->priority = new_priority;
+  //Disable interrupts
+  enum intr_level old_level = intr_disable ();
+  
+  int old_priority = thread_current()->priority;
+  
+  //Set the initial priority to the new priority and refresh/update the current priority 
+  thread_current ()->initial_priority = new_priority;
+  refresh_priority();
+  
+  // If new priority is greater, donate it
+  if(thread_current->priority > old_priority) priority_donation_with_limit();
+  
+  // Else if new priority is less, test if the thread should yield
+  else if (thread_current->priority < old_priority) max_priority_check();
+  
+  //Reset interrupt level
+  intr_set_level(old_level);
 }
 
 /* Returns the current thread's priority. */
@@ -613,28 +629,6 @@ allocate_tid (void)
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
-/* Wakes up all sleeping threads whose sleeping_ticks value has
-    surpassed the global tick count */
-void
-try_wake_up_sleeping_threads( int64_t global_ticks)
-{
-  // While the list is not empty, checks the thread at the front of the list to see
-  //  if it needs to be woken up
-  while (!list_empty(&sleeping_list))
-  {
-      struct list_elem *front = list_front( &sleeping_list );
-      struct thread *t = list_entry( front, struct thread, elem );
-      // Since sleeping_list is ordered by wakeup time, if the front
-      //  element doesn't need to be woken up, then none of them do
-      if ( t->sleeping_ticks > global_ticks )
-          return;
-      // Must pop from blocked sleeping list before adding thread to the ready list.
-      //  Otherwise thread.elem will be in 2 lists simultaneously, which isn't allowed.
-      list_pop_front(&sleeping_list);
-      thread_unblock(t);
-    }
-}
-
 /* Compare the wake up/sleeping times to determine which thread
     should wake up first */
 static bool
@@ -665,6 +659,73 @@ priority_thread_less_func
   struct thread *thread_b = list_entry(b, struct thread, elem);
 
   return thread_a->priority < thread_b->priority;
+}
+
+/*Checks to make sure the current thread does not need to be replaced by another thread (either 
+  because there is a thread with higher priority or because the thread has used up its time)*/
+static void 
+max_priority_check (void)
+{
+  if (list_empty(&ready_list)) 
+    return;
+
+  struct thread *front_thread = list_entry (list_front(&ready_list), struct thread, elem);
+
+  if (intr_context())
+    {
+      thread_ticks++;
+      if (front_thread->priority > thread_current() -> priority ||
+         (thread_ticks >= TIME_SLICE && thread_current()->priority == front_thread->priority))
+        {
+          intr_yield_on_return();
+        }
+      return;
+    }
+
+    if (thread_current()->priority < front_thread->priority)
+      thread_yield();
+}
+
+/* Puts the thread to sleep for a given number of ticks */
+void
+thread_sleep_until (int64_t ticks)
+{
+  struct thread *cur = thread_current ();
+  enum intr_level old_level;
+
+  ASSERT (!intr_context ());
+
+  old_level = intr_disable ();
+  cur->status = THREAD_BLOCKED;
+  cur->sleeping_ticks = ticks;
+  // Can't put idle thread to sleep
+  if (cur != idle_thread)
+    list_insert_ordered(&sleeping_list, &cur->elem, sleeping_thread_less_func, NULL);
+
+  schedule ();
+  intr_set_level (old_level);
+}
+
+/* Wakes up all sleeping threads whose sleeping_ticks value has
+    surpassed the global tick count */
+void
+try_wake_up_sleeping_threads( int64_t global_ticks)
+{
+  // While the list is not empty, checks the thread at the front of the list to see
+  //  if it needs to be woken up
+  while (!list_empty(&sleeping_list))
+  {
+      struct list_elem *front = list_front( &sleeping_list );
+      struct thread *t = list_entry( front, struct thread, elem );
+      // Since sleeping_list is ordered by wakeup time, if the front
+      //  element doesn't need to be woken up, then none of them do
+      if ( t->sleeping_ticks > global_ticks )
+          return;
+      // Must pop from blocked sleeping list before adding thread to the ready list.
+      //  Otherwise thread.elem will be in 2 lists simultaneously, which isn't allowed.
+      list_pop_front(&sleeping_list);
+      thread_unblock(t);
+    }
 }
 
 /* Donates the current thread's priority to whatever thread is holding the lock it is waiting on, and
@@ -709,32 +770,6 @@ refresh_priority (void)
     }
 }
 
-/*Checks to make sure the current thread does not need to be replaced by another thread (either 
-  because there is a thread with higher priority or because the thread has used up its time)*/
-static void 
-max_priority_check (void)
-{
-  if (list_empty(&ready_list)) 
-    return;
-
-  struct thread *front_thread = list_entry (list_front(&ready_list), struct thread, elem);
-
-  if (intr_context())
-    {
-      thread_ticks++;
-      if (front_thread->priority > thread_current() -> priority ||
-         (thread_ticks >= TIME_SLICE && thread_current()->priority == front_thread->priority))
-        {
-          intr_yield_on_return();
-        }
-
-      return;
-    }
-
-    if (thread_current()->priority < front_thread->priority)
-      thread_yield();
-}
-
 /* Removes all the threads waiting on the lock from the list of potential donators */
 void 
 remove_waiting_donators(struct lock *l)
@@ -751,23 +786,3 @@ remove_waiting_donators(struct lock *l)
 	//If the thread was waiting on the lock, remove it from the list
 	if(t->wait_on_lock == l) list_remove(donator);
   }
-
-/* Puts the thread to sleep for a given number of ticks */
-void
-thread_sleep_until (int64_t ticks)
-{
-  struct thread *cur = thread_current ();
-  enum intr_level old_level;
-
-  ASSERT (!intr_context ());
-
-  old_level = intr_disable ();
-  cur->status = THREAD_BLOCKED;
-  cur->sleeping_ticks = ticks;
-  // Can't put idle thread to sleep
-  if (cur != idle_thread)
-    list_insert_ordered(&sleeping_list, &cur->elem, sleeping_thread_less_func, NULL);
-
-  schedule ();
-  intr_set_level (old_level);
-}

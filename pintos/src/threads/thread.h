@@ -151,8 +151,8 @@ int thread_get_load_avg (void);
 
 void thread_sleep_until (int64_t ticks);
 void try_wake_up_sleeping_threads (int64_t global_ticks);
-void remove_waiting_donators(struct lock *l);
-void refresh_priority (void);
 void priority_donation_with_limit (void);
+void refresh_priority (void);
+void remove_waiting_donators(struct lock *l);
 
 #endif /* threads/thread.h */
