@@ -231,8 +231,17 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
+  // Atomically remove waiting donors and update thread prioirty
+  //  - do this atomically because of access to donation list
+  //  - for correctness stay atomic until sema_up()
+  //  - account for thread_mlfqs?
+  enum intr_level old_level = intr_disable();
+  remove_waiting_donators (lock);
+  refresh_priority ();
+
   lock->holder = NULL;
   sema_up (&lock->semaphore);
+  intr_set_level (old_level);
 }
 
 /* Returns true if the current thread holds LOCK, false
