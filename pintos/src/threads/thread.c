@@ -20,6 +20,9 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
+/* Depth limit for donating priority*/
+#define DONATION_DEPTH_LIMIT 8
+
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
@@ -214,6 +217,11 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  /* Replace the current thread if the created thread has a higher priority */
+  old_level = intr_disable ();
+  test_max_priority();
+  intr_set_level (old_level);
+  
   return tid;
 }
 
@@ -487,6 +495,8 @@ init_thread (struct thread *t, const char *name, int priority)
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
+  
+  
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -655,6 +665,48 @@ priority_thread_less_func
   struct thread *thread_b = list_entry(b, struct thread, elem);
 
   return thread_a->priority < thread_b->priority;
+}
+
+/* Donates the current thread's priority to whatever thread is holding the lock it is waiting on, and
+   recurses down the chain until the depth limit (8) is reached */
+void 
+priority_donation_with_limit (void)
+{
+  //Begin at the current thread
+  struct thread *donator = thread_current();
+  struct lock *l = t->wait_on_lock;
+  
+  //Loop until we reach the depth limit or no lock is being waited on
+  for(int depth = 0; l != NULL && depth < DONATION_DEPTH_LIMIT; depth++)
+  {
+	//If the lock isn't held, or if the holder's priority is greater then we do nothing
+	if (l->holder == NULL || l->holder->priority >= donate->priority) return;
+	
+	//Donate the priority
+	l->holder->priority = donator->priority;
+	
+	//Recurse
+	donator = l->holder;
+	l = donator-> wait_on_lock;
+  }
+	
+}
+
+/* Reset the thread's priority to its initital_priority then check the donations list
+    to see if there are any donated priorities higher than initital_priority */
+void 
+refresh_priority (void)
+{
+  struct thread *t = thread_current();
+  t->priority = t->initital_priority;
+
+  if (!list_empty(&t->donations))
+    {
+      struct thread *dontate = list_entry (list_front(&t->donations), struct thread, donation_elem);
+
+      if (dontate->priority > t->priority)
+        t->priority = dontate->priority;
+    }
 }
 
 /*Checks to make sure the current thread does not need to be replaced by another thread (either 
