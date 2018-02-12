@@ -80,11 +80,8 @@ static tid_t allocate_tid (void);
 
 //PROJ 1 ADDED FUNCTIONS
 
-static void max_priority_check (void);
-
 //Comparison functions (to be used in the list_insert_ordered function calls)
 static bool sleeping_thread_less_func (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
-static bool priority_thread_great_func(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -419,7 +416,8 @@ thread_get_recent_cpu (void)
   /* Not yet implemented. */
   return 0;
 }
-
+
+
 /* Idle thread.  Executes when no other thread is ready to run.
 
    The idle thread is initially put on the ready list by
@@ -468,7 +466,8 @@ kernel_thread (thread_func *function, void *aux)
   function (aux);       /* Execute the thread function. */
   thread_exit ();       /* If function() returns, kill the thread. */
 }
-
+
+
 /* Returns the running thread. */
 struct thread *
 running_thread (void)
@@ -627,7 +626,8 @@ allocate_tid (void)
 
   return tid;
 }
-
+
+
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
@@ -649,6 +649,7 @@ sleeping_thread_less_func
 
 /* Comparison function to figure out which thread has a higher priority */
 static bool
+bool
 priority_thread_great_func
   (
   const struct list_elem *a,
@@ -664,7 +665,7 @@ priority_thread_great_func
 
 /*Checks to make sure the current thread does not need to be replaced by another thread (either 
   because there is a thread with higher priority or because the thread has used up its time)*/
-static void 
+void 
 max_priority_check (void)
 {
   //Make sure the list is not empty
