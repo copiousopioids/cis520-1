@@ -84,7 +84,7 @@ static void max_priority_check (void);
 
 //Comparison functions (to be used in the list_insert_ordered function calls)
 static bool sleeping_thread_less_func (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
-static bool priority_thread_less_func(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+static bool priority_thread_great_func(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -651,7 +651,7 @@ sleeping_thread_less_func
 /* Compare the thread priorities to determine which thread
     should be scheduled first */
 static bool
-priority_thread_less_func
+priority_thread_great_func
   (
   const struct list_elem *a,
   const struct list_elem *b,
@@ -661,7 +661,7 @@ priority_thread_less_func
   struct thread *thread_a = list_entry(a, struct thread, elem);
   struct thread *thread_b = list_entry(b, struct thread, elem);
 
-  return thread_a->priority < thread_b->priority;
+  return thread_a->priority > thread_b->priority;
 }
 
 /*Checks to make sure the current thread does not need to be replaced by another thread (either 
