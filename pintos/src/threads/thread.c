@@ -735,7 +735,24 @@ max_priority_check (void)
       thread_yield();
 }
 
-//Puts the thread to sleep for a given number of ticks
+/* Removes all the threads waiting on the lock from the list of potential donators */
+void 
+remove_waiting_donators(struct lock *l)
+{
+  //Gets the first donator off of the list
+  struct list_elem *donator = list_front(&thread_current()->donations);
+  
+  //Loop through all the donators in the list
+  for(struct list_elem *next; donator != list_end(&thread_current()->donations); donator = next)
+  {
+	struct thread *t = list_entry(e, struct thread, donation_elem);
+	next = list_next(donator);
+	
+	//If the thread was waiting on the lock, remove it from the list
+	if(t->wait_on_lock == l) list_remove(donator);
+  }
+
+/* Puts the thread to sleep for a given number of ticks */
 void
 thread_sleep_until (int64_t ticks)
 {
