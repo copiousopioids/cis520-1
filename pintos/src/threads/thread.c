@@ -512,7 +512,10 @@ init_thread (struct thread *t, const char *name, int priority)
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
   
-  
+  // Added initializations for priority donation
+  t->initial_priority = priority;
+  t->wait_on_lock = NULL;
+  list_init (&t->donations);
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -738,19 +741,18 @@ priority_donation_with_limit (void)
   struct lock *l = donator->wait_on_lock;
   
   //Loop until we reach the depth limit or no lock is being waited on
-  for(int depth = 0; l != NULL && depth < DONATION_DEPTH_LIMIT; depth++)
-  {
-	//If the lock isn't held, or if the holder's priority is greater then we do nothing
-	if (l->holder == NULL || l->holder->priority >= donator->priority) return;
+  for (int depth = 0; l != NULL && depth < DONATION_DEPTH_LIMIT; depth++)
+    {
+	    //If the lock isn't held, or if the holder's priority is greater then we do nothing
+	    if (l->holder == NULL || l->holder->priority >= donator->priority) return;
 	
-	//Donate the priority
-	l->holder->priority = donator->priority;
+	    //Donate the priority
+	    l->holder->priority = donator->priority;
 	
-	//Recurse
-	donator = l->holder;
-	l = donator-> wait_on_lock;
-  }
-	
+	    //Recurse
+	    donator = l->holder;
+	    l = donator-> wait_on_lock;
+    }
 }
 
 /* Reset the thread's priority to its initial_priority then check the donations list
