@@ -218,8 +218,8 @@ thread_create (const char *name, int priority,
   thread_unblock (t);
 
   /* Replace the current thread if the created thread has a higher priority */
-  old_level = intr_disable ();
-  test_max_priority();
+  enum intr_level old_level = intr_disable ();
+  max_priority_check();
   intr_set_level (old_level);
   
   return tid;
@@ -365,14 +365,14 @@ thread_set_priority (int new_priority)
   int old_priority = thread_current()->priority;
   
   //Set the initial priority to the new priority and refresh/update the current priority 
-  thread_current ()->initial_priority = new_priority;
-  refresh_priority();
+  thread_current()->initial_priority = new_priority;
+  refresh_priority ();
   
   // If new priority is greater, donate it
-  if(thread_current->priority > old_priority) priority_donation_with_limit();
+  if (thread_current()->priority > old_priority) priority_donation_with_limit ();
   
   // Else if new priority is less, test if the thread should yield
-  else if (thread_current->priority < old_priority) max_priority_check();
+  else if (thread_current()->priority < old_priority) max_priority_check ();
   
   //Reset interrupt level
   intr_set_level(old_level);
@@ -735,13 +735,13 @@ priority_donation_with_limit (void)
 {
   //Begin at the current thread
   struct thread *donator = thread_current();
-  struct lock *l = t->wait_on_lock;
+  struct lock *l = donator->wait_on_lock;
   
   //Loop until we reach the depth limit or no lock is being waited on
   for(int depth = 0; l != NULL && depth < DONATION_DEPTH_LIMIT; depth++)
   {
 	//If the lock isn't held, or if the holder's priority is greater then we do nothing
-	if (l->holder == NULL || l->holder->priority >= donate->priority) return;
+	if (l->holder == NULL || l->holder->priority >= donator->priority) return;
 	
 	//Donate the priority
 	l->holder->priority = donator->priority;
@@ -753,13 +753,13 @@ priority_donation_with_limit (void)
 	
 }
 
-/* Reset the thread's priority to its initital_priority then check the donations list
-    to see if there are any donated priorities higher than initital_priority */
+/* Reset the thread's priority to its initial_priority then check the donations list
+    to see if there are any donated priorities higher than initial_priority */
 void 
 refresh_priority (void)
 {
   struct thread *t = thread_current();
-  t->priority = t->initital_priority;
+  t->priority = t->initial_priority;
 
   if (!list_empty(&t->donations))
     {
@@ -778,11 +778,12 @@ remove_waiting_donators(struct lock *l)
   struct list_elem *donator = list_front(&thread_current()->donations);
   
   //Loop through all the donators in the list
-  for(struct list_elem *next; donator != list_end(&thread_current()->donations); donator = next)
-  {
-	struct thread *t = list_entry(e, struct thread, donation_elem);
-	next = list_next(donator);
+  for (struct list_elem *next; donator != list_end(&thread_current()->donations); donator = next)
+    {
+	    struct thread *t = list_entry(donator, struct thread, donation_elem);
+	    next = list_next(donator);
 	
-	//If the thread was waiting on the lock, remove it from the list
-	if(t->wait_on_lock == l) list_remove(donator);
-  }
+	    //If the thread was waiting on the lock, remove it from the list
+	    if(t->wait_on_lock == l) list_remove(donator);
+    }
+}
