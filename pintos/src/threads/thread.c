@@ -261,7 +261,7 @@ thread_unblock (struct thread *t)
 
  /* Changed list insertion so that ready threads are ordered by priority
 	Old way: list_push_back (&ready_list, &t->elem); */
-  list_insert_ordered(&ready_list, &t->elem, (list_less_func *) &priority_thread_less_func, NULL);
+  list_insert_ordered(&ready_list, &t->elem, (list_less_func *) &priority_thread_great_func, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -332,7 +332,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread)
-    list_insert_ordered(&ready_list, &cur->elem, (list_less_func *) &priority_thread_less_func, NULL);
+    list_insert_ordered(&ready_list, &cur->elem, (list_less_func *) &priority_thread_great_func, NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
