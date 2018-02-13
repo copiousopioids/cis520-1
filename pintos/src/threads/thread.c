@@ -787,7 +787,7 @@ void
 remove_waiting_donators(struct lock *l)
 {
   //Gets the first donator off of the list
-  struct list_elem *donator = list_front(&thread_current()->donations);
+  struct list_elem *donator = list_begin(&thread_current()->donations);
   
   //Loop through all the donators in the list
   for (struct list_elem *next; donator != list_end(&thread_current()->donations); donator = next)
