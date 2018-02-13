@@ -632,8 +632,7 @@ allocate_tid (void)
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
-/* Compare the wake up/sleeping times to determine which thread
-    should wake up first */
+/* Comparison function to figure out which thread's wake-up time is sooner */
 static bool
 sleeping_thread_less_func
   (
@@ -648,8 +647,7 @@ sleeping_thread_less_func
   return thread_a->sleeping_ticks < thread_b->sleeping_ticks;
 }
 
-/* Compare the thread priorities to determine which thread
-    should be scheduled first */
+/* Comparison function to figure out which thread has a higher priority */
 static bool
 priority_thread_great_func
   (
@@ -669,11 +667,13 @@ priority_thread_great_func
 static void 
 max_priority_check (void)
 {
-  if (list_empty(&ready_list)) 
-    return;
-
+  //Make sure the list is not empty
+  if (list_empty(&ready_list)) return;
+  
+  //Get the thread with the highest priority (front of the list)
   struct thread *front_thread = list_entry (list_front(&ready_list), struct thread, elem);
 
+  //If interrupts are on, we can preempt (?) the currently running process if it is warranted
   if (intr_context())
     {
       thread_ticks++;
@@ -684,7 +684,8 @@ max_priority_check (void)
         }
       return;
     }
-
+	
+	//If interrupts are off, and the current thread needs to be replaced just yield
     if (thread_current()->priority < front_thread->priority)
       thread_yield();
 }
@@ -694,13 +695,17 @@ void
 thread_sleep_until (int64_t ticks)
 {
   struct thread *cur = thread_current ();
-  enum intr_level old_level;
 
   ASSERT (!intr_context ());
-
-  old_level = intr_disable ();
+  //Disable interrupts
+  enum intr_level old_level = intr_disable ();
+  
+  //Put the thread to sleep?
   cur->status = THREAD_BLOCKED;
+  
+  //Set the wake-up time
   cur->sleeping_ticks = ticks;
+  
   // Can't put idle thread to sleep
   if (cur != idle_thread)
     list_insert_ordered(&sleeping_list, &cur->elem, sleeping_thread_less_func, NULL);
@@ -710,29 +715,29 @@ thread_sleep_until (int64_t ticks)
 }
 
 /* Wakes up all sleeping threads whose sleeping_ticks value has
-    surpassed the global tick count */
+   surpassed the global tick count */
 void
 try_wake_up_sleeping_threads( int64_t global_ticks)
 {
-  // While the list is not empty, checks the thread at the front of the list to see
-  //  if it needs to be woken up
+  // While the list is not empty, checks the thread at the front of the list to see if it needs to be woken up
   while (!list_empty(&sleeping_list))
   {
       struct list_elem *front = list_front( &sleeping_list );
       struct thread *t = list_entry( front, struct thread, elem );
-      // Since sleeping_list is ordered by wakeup time, if the front
-      //  element doesn't need to be woken up, then none of them do
-      if ( t->sleeping_ticks > global_ticks )
-          return;
-      // Must pop from blocked sleeping list before adding thread to the ready list.
-      //  Otherwise thread.elem will be in 2 lists simultaneously, which isn't allowed.
+	  
+      /* Since sleeping_list is ordered by wakeup time, if the front element doesn't 
+		 need to be woken up, then none of them do*/
+      if ( t->sleeping_ticks > global_ticks ) return;
+	  
+      /* Must pop from blocked sleeping list before adding thread to the ready list.
+		 Otherwise thread.elem will be in 2 lists simultaneously, which isn't allowed.*/
       list_pop_front(&sleeping_list);
       thread_unblock(t);
     }
 }
 
 /* Donates the current thread's priority to whatever thread is holding the lock it is waiting on, and
-   recurses down the chain until the depth limit (8) is reached */
+   recurses down the chain until the donation depth limit (currently 8) is reached */
 void 
 priority_donation_with_limit (void)
 {
@@ -755,20 +760,25 @@ priority_donation_with_limit (void)
     }
 }
 
-/* Reset the thread's priority to its initial_priority then check the donations list
-    to see if there are any donated priorities higher than initial_priority */
+/* Reset the thread's priority to its initial_priority (necessary when releasing a lock that a process with
+   higher priority is waiting on) then check the donations list to see if there are any donated priorities higher
+   than initial_priority */
 void 
 refresh_priority (void)
 {
+  //Reset the current thread's priority to it's initial priority
   struct thread *t = thread_current();
   t->priority = t->initial_priority;
 
+  //If we have donators available
   if (!list_empty(&t->donations))
     {
-      struct thread *dontate = list_entry (list_front(&t->donations), struct thread, donation_elem);
+	  //Get the donator with highest priority (list should be sorted by highest priority)
+      struct thread *donator = list_entry (list_front(&t->donations), struct thread, donation_elem);
 
-      if (dontate->priority > t->priority)
-        t->priority = dontate->priority;
+	  //If the donator's priority is higher, take it.
+      if (donator->priority > t->priority)
+        t->priority = donator->priority;
     }
 }
 
@@ -782,10 +792,14 @@ remove_waiting_donators(struct lock *l)
   //Loop through all the donators in the list
   for (struct list_elem *next; donator != list_end(&thread_current()->donations); donator = next)
     {
+		//Get the thread from the list element
 	    struct thread *t = list_entry(donator, struct thread, donation_elem);
+		
+		//Get the next donator before attempting to remove the current one
 	    next = list_next(donator);
 	
 	    //If the thread was waiting on the lock, remove it from the list
-	    if(t->wait_on_lock == l) list_remove(donator);
+	    if(t->wait_on_lock == l) 
+		  list_remove(donator);
     }
 }
