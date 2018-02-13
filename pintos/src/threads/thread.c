@@ -633,7 +633,7 @@ allocate_tid (void)
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
 /* Comparison function to figure out which thread's wake-up time is sooner */
-static bool
+bool
 sleeping_thread_less_func
   (
   const struct list_elem *a,
@@ -648,7 +648,6 @@ sleeping_thread_less_func
 }
 
 /* Comparison function to figure out which thread has a higher priority */
-static bool
 bool
 priority_thread_great_func
   (
