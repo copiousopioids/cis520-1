@@ -634,7 +634,7 @@ uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
 /* Comparison function to figure out which thread's wake-up time is sooner */
 bool
-sleeping_thread_less_func
+thead_tick_compare
   (
   const struct list_elem *a,
   const struct list_elem *b,
@@ -649,7 +649,7 @@ sleeping_thread_less_func
 
 /* Comparison function to figure out which thread has a higher priority */
 bool
-priority_thread_great_func
+thread_priority_compare
   (
   const struct list_elem *a,
   const struct list_elem *b,
@@ -717,7 +717,7 @@ thread_sleep_until (int64_t ticks)
 /* Wakes up all sleeping threads whose sleeping_ticks value has
    surpassed the global tick count */
 void
-try_wake_up_sleeping_threads( int64_t global_ticks)
+try_wake_up_sleeping_threads (int64_t global_ticks)
 {
   // While the list is not empty, checks the thread at the front of the list to see if it needs to be woken up
   while (!list_empty(&sleeping_list))
@@ -784,7 +784,7 @@ refresh_priority (void)
 
 /* Removes all the threads waiting on the lock from the list of potential donators */
 void 
-remove_waiting_donators(struct lock *l)
+remove_waiting_donators (struct lock *l)
 {
   //Gets the first donator off of the list
   struct list_elem *donator = list_begin(&thread_current()->donations);
