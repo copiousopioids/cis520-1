@@ -153,8 +153,8 @@ void thread_sleep_until (int64_t ticks);
 void try_wake_up_sleeping_threads (int64_t global_ticks);
 void priority_donation_with_limit (void);
 void refresh_priority (void);
-void remove_waiting_donators(struct lock *l);
-bool priority_thread_great_func(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+void remove_waiting_donators (struct lock *l);
+bool thread_priority_compare (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 void max_priority_check (void);
 
 #endif /* threads/thread.h */

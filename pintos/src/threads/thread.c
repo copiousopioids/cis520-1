@@ -81,7 +81,7 @@ static tid_t allocate_tid (void);
 //PROJ 1 ADDED FUNCTIONS
 
 //Comparison functions (to be used in the list_insert_ordered function calls)
-static bool sleeping_thread_less_func (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+static bool thread_tick_compare (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -258,7 +258,7 @@ thread_unblock (struct thread *t)
 
  /* Changed list insertion so that ready threads are ordered by priority
 	Old way: list_push_back (&ready_list, &t->elem); */
-  list_insert_ordered(&ready_list, &t->elem, (list_less_func *) &priority_thread_great_func, NULL);
+  list_insert_ordered(&ready_list, &t->elem, (list_less_func *) &thread_priority_compare, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -329,7 +329,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread)
-    list_insert_ordered(&ready_list, &cur->elem, (list_less_func *) &priority_thread_great_func, NULL);
+    list_insert_ordered(&ready_list, &cur->elem, (list_less_func *) &thread_priority_compare, NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -634,7 +634,7 @@ uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
 /* Comparison function to figure out which thread's wake-up time is sooner */
 bool
-thead_tick_compare
+thread_tick_compare
   (
   const struct list_elem *a,
   const struct list_elem *b,
@@ -708,7 +708,7 @@ thread_sleep_until (int64_t ticks)
   
   // Can't put idle thread to sleep
   if (cur != idle_thread)
-    list_insert_ordered(&sleeping_list, &cur->elem, sleeping_thread_less_func, NULL);
+    list_insert_ordered(&sleeping_list, &cur->elem, (list_less_func *) &thread_tick_compare, NULL);
 
   schedule ();
   intr_set_level (old_level);

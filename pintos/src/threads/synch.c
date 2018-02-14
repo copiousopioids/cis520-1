@@ -76,7 +76,7 @@ sema_down (struct semaphore *sema)
       //  so that highest prioirty gets access first
       list_insert_ordered (&sema->waiters, 
                           &thread_current()->elem,  
-                          (list_less_func *) &priority_thread_great_func, 
+                          (list_less_func *) &thread_priority_compare, 
                           NULL);
       thread_block ();
     }
@@ -125,7 +125,7 @@ sema_up (struct semaphore *sema)
   if (!list_empty (&sema->waiters)) 
     {
       // Sort the list to verify the correctness
-      list_sort (&sema->waiters,  (list_less_func *) &priority_thread_great_func, NULL);
+      list_sort (&sema->waiters,  (list_less_func *) &thread_priority_compare, NULL);
       // Unblock first waiter it has highest prioirty
       thread_unblock (list_entry (list_pop_front (&sema->waiters),
                                 struct thread, elem));
@@ -222,7 +222,7 @@ lock_acquire (struct lock *lock)
       thread_current()->wait_on_lock = lock;
       list_insert_ordered(&lock->holder->donations, 
                           &thread_current()->donation_elem, 
-                           (list_less_func *) &priority_thread_great_func, 
+                           (list_less_func *) &thread_priority_compare, 
                            NULL);
     }
 
@@ -423,8 +423,8 @@ sema_waiter_priority_comapre
       return false;
 
   // For correctness verify that both lists are sorted
-  list_sort (&sema_a->semaphore.waiters, (list_less_func *) &priority_thread_great_func, NULL);
-  list_sort (&sema_b->semaphore.waiters, (list_less_func *) &priority_thread_great_func, NULL);
+  list_sort (&sema_a->semaphore.waiters, (list_less_func *) &thread_priority_compare, NULL);
+  list_sort (&sema_b->semaphore.waiters, (list_less_func *) &thread_priority_compare, NULL);
 
   // Get the first waiting thread
   struct thread *thread_a = list_entry (list_front(&sema_a->semaphore.waiters), struct thread, elem);
