@@ -4,18 +4,18 @@
 void syscall_init (void);
 
 /* should these be static in the syscall.c file? */
-void halt(void);
-void exit(void);
-void exec(void);
-void wait(void);
-void create(void);
-void remove(void);
-void open(void);
-void filesize(void);
-void read(void);
-void write(void);
-void seek(void);
-void tell(void);
-void close(void);
+void halt( void );
+void exit( int status );
+pid_t exec( const char *cmd_line );
+int wait( pid_t pid );
+bool create( const char *file, unsigned initial_size );
+bool remove( const char *file );
+int open( const char *file );
+int filesize( int fd );
+int read( int fd, void *buffer, unsigned size );
+int write( int fd, const void *buffer, unsigned size );
+void seek( int fd, unsigned position );
+unsigned tell( int fd );
+void close( int fd );
 
 #endif /* userprog/syscall.h */
