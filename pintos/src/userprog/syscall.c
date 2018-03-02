@@ -4,7 +4,10 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
+#define USER_VADDR_START ((void *) 0x08048000)
+
 static void syscall_handler (struct intr_frame *);
+void check_valid_access (const void *vaddr);
 
 void
 syscall_init (void) 
@@ -16,9 +19,12 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f UNUSED) 
 {
+  uint32_t call_nmbr;
   //printf ("system call!\n");
   //thread_exit ();
 
+  check_valid_access( (const void*) f->esp );
+  call_nmbr = ( *(uint32_t *)f->esp );
 
   /* Currently call thread_exit(); for every case until implemented */
   switch( call_nmbr )
@@ -69,9 +75,20 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
     default:
       printf ("Unkonwn system call! Exiting...\n");
-      thread_exit();
+      thread_exit(); //TODO: exit differently with error code for debugging?
       break;
   }
+}
+
+void
+check_valid_access (const void *vaddr)
+{
+  //Verify that 
+  if( !is_user_vaddr(vaddr) || vaddr < USER_VADDR_START )
+    {
+      printf ("Bad access! Exiting...\n");
+      thread_exit(); //TODO: exit differently with error code for debugging?
+    }
 }
 
 
@@ -81,68 +98,81 @@ syscall_handler (struct intr_frame *f UNUSED)
 *        syscall.h if you udpate it here. Most
 *        will need to be updated.
 ***************************************************/
-
-static void halt(void)
+ 
+void
+halt(void)
 {
   shutdown_power_off ();
 }
 
-static void exit(void)
+void
+exit(void)
 {
   
 }
 
-static void exec(void)
+void
+exec(void)
 {
   
 }
 
-static void wait(void)
+void
+wait(void)
 {
   
 }
 
-static void create(void)
+void
+create(void)
 {
   
 }
 
-static void remove(void)
+void
+remove(void)
 {
   
 }
 
-static void open(void)
+void
+open(void)
 {
   
 }
 
-static void filesize(void)
+void
+filesize(void)
 {
   
 }
 
-static void read(void)
+void
+read(void)
 {
   
 }
 
-static void write(void)
+void
+write(void)
 {
   
 }
 
-static void seek(void)
+void
+seek(void)
 {
   
 }
 
-static void tell(void)
+void
+tell(void)
 {
   
 }
 
-static void close(void)
+void
+close(void)
 {
   
 }
