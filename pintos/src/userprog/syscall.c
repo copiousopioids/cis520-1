@@ -5,7 +5,7 @@
 #include "threads/thread.h"
 
 #define ARG_LIMIT 3
-#define USER_VADDR_START ((void *) 0x08048000)
+#define USER_VADDR_START ((void *) 0x08048000) // Defined in section 1.4.1 of Project Doc
 
 static void syscall_handler (struct intr_frame *);
 static void check_valid_access (const void *vaddr);
@@ -98,6 +98,8 @@ syscall_handler (struct intr_frame *f UNUSED)
   }
 }
 
+/* Takes a virtual address pointer and verifies that it is within that 
+    processe's provided virtual adderss space. */
 static void
 check_valid_access ( const void *vaddr )
 {
@@ -109,13 +111,16 @@ check_valid_access ( const void *vaddr )
     }
 }
 
+
+/* Takes a pointer to a stack frame and gets 'num_args' arguments from
+    it to execute the system call */
 static void 
 get_arguments ( struct intr_frame *f, int *arg, int num_args ) 
 {
   int *next_arg;
   for( int i = 0; i < num_args; i++ )
     {
-      // get next arg address off the stack
+      // get next arg address off the stack ( i + 1 becuase i starts at 0)
       next_arg = (int *) f->esp + i + 1;
       // validate this address
       check_valid_access( (const void *) next_arg );
