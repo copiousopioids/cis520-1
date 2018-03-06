@@ -534,11 +534,11 @@ setup_stack (void **esp, char** argv, int argc)
 		  /*Push argc - move esp by WORD_SIZE to keep return address aligned, but only copy the size of the int. It
 						shouldn't matter, since with 32/64 bit machines sizeof(int)==sizeof(char *) but just to be safe */
 		  *esp -= WORD_SIZE;
-		  memcpy(*esp, &argc, sizeof(int));
+		  memcpy(*esp, &argpointers, sizeof(int));
 
 		  //Push fake return address
 		  *esp -= WORD_SIZE;
-		  memcpy(*esp, &argv[argc], sizeof(int));
+		  memcpy(*esp, &argpointers[argc], sizeof(int));
 	  }
       
 	  else
