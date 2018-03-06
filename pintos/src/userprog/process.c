@@ -41,7 +41,7 @@ https://github.com/pindexis/pintos-project2
 static bool load (const char *cmdline, void (**eip) (void), void **esp, char **arguments);
 
 //Function for taking apart the arguments and forming argv
-static int get_args(char* file_name, char** arguments, char* argv[])
+static int get_args(char* file_name, char** arguments, char* argv[]);
 
 struct cmd_line
 {
@@ -74,7 +74,7 @@ process_execute (const char *file_name)
   cline.arguments = save_ptr;
 
   // Create a new thread to execute the command line
-  tid = thread_create (cline.file_name, PRI_DEFAULT, start_process, cline);
+  tid = thread_create (cline.file_name, PRI_DEFAULT, start_process, &cline);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -348,7 +348,7 @@ load (const char *file_name, void (**eip) (void), void **esp, char **arguments)
 
   //Create argv
   char *argv[CMD_ARGS_MAX];
-  int argc =  get_args(file_name, argument, argv)
+  int argc =  get_args(file_name, arguments, argv);
 
   //Set up the stack using argv
   if (!setup_stack (esp, argv, argc))
@@ -480,7 +480,7 @@ setup_stack (void **esp, char** argv, int argc)
 {
   uint8_t *kpage;
   bool success = false;
-  char **args
+  char **args;
 
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
@@ -538,7 +538,7 @@ setup_stack (void **esp, char** argv, int argc)
 
 		  //Push fake return address
 		  *esp -= WORD_SIZE;
-		  memcpy(*esp, &argv[c], sizeof(int));
+		  memcpy(*esp, &argv[argc], sizeof(int));
 	  }
       
 	  else

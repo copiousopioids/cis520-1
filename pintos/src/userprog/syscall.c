@@ -5,6 +5,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
+#include "devices/shutdown.h"
 
 #define ARG_LIMIT 3
 #define USER_VADDR_START ((void *) 0x08048000) // Defined in section 1.4.1 of Project Doc
@@ -12,6 +13,20 @@
 static void syscall_handler (struct intr_frame *);
 static void check_valid_access (const void *vaddr);
 static void get_arguments (struct intr_frame *f, int *arg, int num_args);
+
+static void halt( void );
+static void exit( int status );
+static pid_t exec( const char *cmd_line );
+static int wait( pid_t pid );
+static bool create( const char *file, unsigned initial_size );
+static bool remove( const char *file );
+static int open( const char *file );
+static int filesize( int fd );
+static int read( int fd, void *buffer, unsigned size );
+static int write( int fd, const void *buffer, unsigned size );
+static void seek( int fd, unsigned position );
+static unsigned tell( int fd );
+static void close( int fd );
 
 //The bottom of the address space.
 int MAX_USER_VIRTUAL_ADDR = ((void*) 0x08048000);
@@ -45,57 +60,57 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
     case SYS_EXIT:    /* (int status) 1 arg */
       printf ("SYS_EXIT system call!\n");
-      get_arguments( f, &args, 1 ); // Do I need address of the first element instead?? *args[0]
+      get_arguments( f, &args[0], 1 );
       thread_exit();
       break;
     case SYS_EXEC:    /* (const char *cmd_line) 1 arg */
       printf ("SYS_EXEC system call!\n");
-      get_arguments( f, &args, 1 );
+      get_arguments( f, &args[0], 1 );
       thread_exit();
       break;
     case SYS_WAIT:    /* (pid_t pid) 1 arg */
       printf ("SYS_WAIT system call!\n");
-      get_arguments( f, &args, 1 );
+      get_arguments( f, &args[0], 1 );
       thread_exit();
       break;
     case SYS_CREATE:  /* (const char *file, unsigned initial_size) 2 args */
       printf ("SYS_CREATE system call!\n");
-      get_arguments( f, &args, 2) ;
+      get_arguments( f, &args[0], 2) ;
       thread_exit();
       break;
     case SYS_OPEN:    /* const char *file) 1 arg */
       printf ("SYS_OPEN system call!\n");
-      get_arguments( f, &args, 1 );
+      get_arguments( f, &args[0], 1 );
       thread_exit();
       break;
     case SYS_FILESIZE:/* (int fd) 1 arg */
       printf ("SYS_FILESIZE system call!\n");
-      get_arguments( f, &args, 1 );
+      get_arguments( f, &args[0], 1 );
       thread_exit();
       break;
     case SYS_READ:   /* (int fd, void *buffer, unsigned size) 3 args */
       printf ("SYS_WRITE system call!\n");
-      get_arguments( f, &args, 3 );
+      get_arguments( f, &args[0], 3 );
       thread_exit();
       break;
     case SYS_WRITE:   /* (int fd, void *buffer, unsigned size) 3 args */
       printf ("SYS_WRITE system call!\n");
-      get_arguments( f, &args, 3 );
+      get_arguments( f, &args[0], 3 );
       thread_exit();
       break;
     case SYS_SEEK:    /* (int fd, unsigned position) 2 args */
       printf ("SYS_SEEK system call!\n");
-      get_arguments( f, &args, 2 );
+      get_arguments( f, &args[0], 2 );
       thread_exit();
       break;
     case SYS_TELL:    /* (int fd) 1 args */
       printf ("SYS_TELL system call!\n");
-      get_arguments( f, &args, 1 );
+      get_arguments( f, &args[0], 1 );
       thread_exit();
       break;
     case SYS_CLOSE:   /* (int fd)  1 arg */
       printf ("SYS_CLOSE system call!\n");
-      get_arguments( f, &args, 1 );
+      get_arguments( f, &args[0], 1 );
       thread_exit();
       break;
     default:          /* default case */
@@ -143,79 +158,79 @@ get_arguments ( struct intr_frame *f, int *arg, int num_args )
 *        will need to be updated.
 ***************************************************/
  
-void
+static void
 halt( void )
 {
   shutdown_power_off ();
 }
 
-void
+static void
 exit(int status )
 {
   
 }
 
-pid_t
+static pid_t
 exec( const char *cmd_line )
 {
   
 }
 
-int
+static int
 wait( pid_t pid )
 {
   
 }
 
-bool
+static bool
 create( const char *file, unsigned initial_size )
 {
   
 }
 
-bool
+static bool
 remove( const char *file )
 {
   
 }
 
-int
+static int
 open( const char *file )
 {
   
 }
 
-int
+static int
 filesize( int fd )
 {
   
 }
 
-int
+static int
 read( int fd, void *buffer, unsigned size )
 {
   
 }
 
-int
+static int
 write( int fd, const void *buffer, unsigned size )
 {
   
 }
 
-void
+static void
 seek( int fd, unsigned position )
 {
   
 }
 
-unsigned
+static unsigned
 tell( int fd )
 {
   
 }
 
-void
+static void
 close( int fd )
 {
   
@@ -238,9 +253,10 @@ int deref_user_pointer_to_kernel(const void *virtualaddr)
 {
   // bytes within range are correct
   // for strings + buffers?
-  check_valid_ptr(virtualaddr);
+  verify_valid_ptr(virtualaddr);
   void *usrptr = pagedir_get_page(thread_current()->pagedir, virtualaddr);
   if (!usrptr)
-      exit(ERROR);
+      //exit(ERROR);
+      thread_exit();
   return (int) usrptr;
 }
