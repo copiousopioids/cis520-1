@@ -11,7 +11,7 @@
 #define USER_VADDR_START ((void *) 0x08048000) // Defined in section 1.4.1 of Project Doc
 
 static void syscall_handler (struct intr_frame *);
-static void check_valid_access (const void *vaddr);
+static void verify_valid_ptr (const void *vaddr);
 static void get_arguments (struct intr_frame *f, int *arg, int num_args);
 
 static void halt( void );
@@ -48,7 +48,7 @@ syscall_handler (struct intr_frame *f UNUSED)
   //printf ("system call!\n");
   //thread_exit ();
 
-  check_valid_access( (const void*) f->esp );
+  verify_valid_ptr( (const void*) f->esp );
   call_nmbr = ( *(uint32_t *)f->esp );
 
   /* Currently call thread_exit(); for every case until implemented */
