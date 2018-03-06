@@ -66,7 +66,8 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
-  //Split the input line into the filename and arguments
+  //Split the input line into the filename and arguments - Need to do this so we can use the filename when 
+  //starting the thread, otherwise it would be easier to split it in start_process
   struct cmd_line cline;
   char *save_ptr;
   cline.file_name = strtok_r(fn_copy, " ", &save_ptr);
@@ -100,7 +101,7 @@ start_process (void *cmd_line_)
   success = load (cline->file_name, &if_.eip, &if_.esp, &(cline->arguments));
 
   /* If load failed, quit. */
-  palloc_free_page (file_name);
+  //palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
 
