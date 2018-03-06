@@ -120,17 +120,33 @@ syscall_handler (struct intr_frame *f UNUSED)
   }
 }
 
+
 /* Takes a virtual address pointer and verifies that it is within that 
     processe's provided virtual adderss space. */
-static void
-check_valid_access ( const void *vaddr )
+//See Section 1.5
+void verify_valid_ptr (const void *virtualaddr)
 {
-  //Verify that 
-  if( !is_user_vaddr(vaddr) || vaddr < USER_VADDR_START )
-    {
-      printf ("Bad access! Exiting...\n");
-      thread_exit(); //TODO: exit differently with error code for debugging?
-    }
+  //Need to check:
+  //null pointer
+  //pointer to unmapped virtual memory
+  //pointer to kernel virtual address space
+  if (virtualaddr < MAX_USER_VIRTUAL_ADDR || !is_user_vaddr(virtualaddr))
+    //terminate and free resources.
+    thread_exit();
+}
+
+
+//Dereference a valid user pointer
+int deref_user_pointer_to_kernel(const void *virtualaddr)
+{
+  // bytes within range are correct
+  // for strings + buffers?
+  verify_valid_ptr(virtualaddr);
+  void *usrptr = pagedir_get_page(thread_current()->pagedir, virtualaddr);
+  if (!usrptr)
+      //exit(ERROR);
+      thread_exit();
+  return (int) usrptr;
 }
 
 
@@ -145,11 +161,12 @@ get_arguments ( struct intr_frame *f, int *arg, int num_args )
       // get next arg address off the stack ( i + 1 becuase i starts at 0)
       next_arg = (int *) f->esp + i + 1;
       // validate this address
-      check_valid_access( (const void *) next_arg );
+      verify_valid_ptr( (const void *) next_arg );
       // save in it in the buffer
       arg[i] = *next_arg;
     }
 }
+
 
 /***************************************************
 *   System Call functions
@@ -234,29 +251,4 @@ static void
 close( int fd )
 {
   
-}
-
-//See Section 1.5
-void verify_valid_ptr (const void *virtualaddr)
-{
-  //Need to check:
-  //null pointer
-  //pointer to unmapped virtual memory
-  //pointer to kernel virtual address space
-  if (virtualaddr < MAX_USER_VIRTUAL_ADDR || !is_user_vaddr(virtualaddr))
-    //terminate and free resources.
-    thread_exit();
-}
-
-//Dereference a valid user pointer
-int deref_user_pointer_to_kernel(const void *virtualaddr)
-{
-  // bytes within range are correct
-  // for strings + buffers?
-  verify_valid_ptr(virtualaddr);
-  void *usrptr = pagedir_get_page(thread_current()->pagedir, virtualaddr);
-  if (!usrptr)
-      //exit(ERROR);
-      thread_exit();
-  return (int) usrptr;
 }
