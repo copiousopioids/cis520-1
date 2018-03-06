@@ -32,9 +32,9 @@ Zachary Marcolesco	<zmarcolesco@ksu.edu>
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
     thread.h:
-     - Add "int64_t sleeping_ticks;" to the thread structure 
+     - Add "int64_t sleeping_ticks;" to the thread structure
         Add this struct member to keep track of how long the thread is supposed to sleep.
-        
+
     thread.c
      - Add "static struct list sleeping_list;"
         Create this list to keep track of sleeping threads.
@@ -43,7 +43,7 @@ Zachary Marcolesco	<zmarcolesco@ksu.edu>
 
 >> A2: Briefly describe what happens in a call to your timer_sleep(),
 >> including the effects of the timer interrupt handler.
-    
+
     If "ticks" is valid then "timer_sleep_until()" is called which sets the "sleeping_ticks"
      of the thread and adds it to the "sleeping_list". In the timer interrupt handler we check
      if any threads are ready to be woken up after ticks has been incremented.
@@ -58,16 +58,16 @@ Zachary Marcolesco	<zmarcolesco@ksu.edu>
 
 >> A4: How are race conditions avoided when multiple threads call
 >> timer_sleep() simultaneously?
-   
-    Interrupts are disabled when accessing the list of sleeping threads and scheduling other 
-     threads. This makes the process of putting the thread to sleep atomic, thus avoiding race 
+
+    Interrupts are disabled when accessing the list of sleeping threads and scheduling other
+     threads. This makes the process of putting the thread to sleep atomic, thus avoiding race
      conditions.
 
 >> A5: How are race conditions avoided when a timer interrupt occurs
 >> during a call to timer_sleep()?
-    
-    As mentioned in A4, interrupts are disabled when accessing the list of sleeping threads 
-     and scheduling other threads. This means that the interrupt essentially does not occur 
+
+    As mentioned in A4, interrupts are disabled when accessing the list of sleeping threads
+     and scheduling other threads. This means that the interrupt essentially does not occur
      until the thread is done being put to sleep.
 
 ---- RATIONALE ----
@@ -75,22 +75,22 @@ Zachary Marcolesco	<zmarcolesco@ksu.edu>
 >> A6: Why did you choose this design?  In what ways is it superior to
 >> other designs that you considered?
 
-    We initially called try_wake_up_sleeping_threads() in thread_tick() (in thread.c), but 
-     decided that it would be more efficient to call this in timer.c. Due to this we were 
+    We initially called try_wake_up_sleeping_threads() in thread_tick() (in thread.c), but
+     decided that it would be more efficient to call this in timer.c. Due to this we were
      able to avoid including timer.h in thread.c.
-    
-    We chose this design before we understood the purpose of semaphores and we execute 
-     essentially identical logic of what semaphores do (sema_down() blocks a thread and 
+
+    We chose this design before we understood the purpose of semaphores and we execute
+     essentially identical logic of what semaphores do (sema_down() blocks a thread and
      sema_up() unblocks a thread). We plan to revisit this part of our solution when we
      have finished the other parts of the project.
-    
-    We used [1] as a starting point which showed us that a sorted list was good (see A3). 
-     It also gave us a general direction to begin working on the project (i.e. what files 
-     we need to be looking at, what steps should go into putting a thread to sleep/waking 
+
+    We used [1] as a starting point which showed us that a sorted list was good (see A3).
+     It also gave us a general direction to begin working on the project (i.e. what files
+     we need to be looking at, what steps should go into putting a thread to sleep/waking
      it up).
 
-     
-     
+
+
              PRIORITY SCHEDULING
              ===================
 
