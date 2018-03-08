@@ -23,6 +23,9 @@
 /* Depth limit for donating priority*/
 #define DONATION_DEPTH_LIMIT 8
 
+//File descriptor values of 0 and 1 are reserved
+#define MIN_FD 2
+
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
@@ -111,6 +114,8 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+
+
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -210,6 +215,13 @@ thread_create (const char *name, int priority,
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
   sf->ebp = 0;
+
+  /* Initialize Parent ID to calling thread's ID and add this thread's 
+  process tracker to the calling thread's child list */
+  t->parent_id = thread_tid();
+  struct process_tracker *pt = initialize_process_tracker(t->tid);
+  t->pt = pt;
+  
 
   /* Add to run queue. */
   thread_unblock (t);
@@ -515,6 +527,11 @@ init_thread (struct thread *t, const char *name, int priority)
   t->initial_priority = priority;
   t->wait_on_lock = NULL;
   list_init (&t->donations);
+
+  //Added initializations for syscall file system stuff
+  list_init(&t->file_list);
+  t->fd = MIN_FD;
+
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -802,4 +819,15 @@ remove_waiting_donators (struct lock *l)
 	    if(t->wait_on_lock == l) 
 		  list_remove(donator);
     }
+}
+
+struct process_tracker* initialize_process_tracker(int pid)
+{
+	struct process_tracker* cp = malloc(sizeof(struct process_tracker));
+	cp->pid = pid;
+	cp->load = NOT_LOADED;
+	cp->exit = cp->wait = false;
+	list_push_back(&thread_current()->child_list,
+		&cp->elem);
+	return cp;
 }

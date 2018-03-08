@@ -14,6 +14,23 @@ enum thread_status
     THREAD_DYING        /* About to be destroyed. */
   };
 
+enum load_status
+{
+	NOT_LOADED,
+	LOAD_FAILED,
+	LOADED
+};
+
+struct process_tracker 
+{
+	int pid;					/* Process ID - Essentially the same as tid */
+	load_status load;			/* The load status of the process */
+	bool wait;					/* Tracks if the parent is waiting on it */
+	bool exit;					/* Tracks if exit has been called on it */
+	int exit_status;			/* Process exit status - "Conventionally, a status of 0 indicates success and nonzero values indicate errors.*/
+	struct list_elem elem;		/* List element to place in parent's children list */
+};
+
 /* Thread identifier type.
    You can redefine this to whatever type you like. */
 typedef int tid_t;
@@ -96,6 +113,15 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+	// Need these for file system sys calls
+	struct list file_list;				/* List of file_binders */
+	int next_handle;					/* Next available fd handle */
+
+	//Need these for wait/exec sys calls
+	struct list children;				/* List of childe processes */
+	tid_t parent_id;					/* Parent's tid/pid */
+	struct process_tracker* pt;			/* Pointer to the process tracker stored in the parent processes children list */
+
     /* Priority Scheduling */
     int initial_priority;
     struct lock *wait_on_lock;
@@ -107,9 +133,12 @@ struct thread
     uint32_t *pagedir;                  /* Page directory. */
 #endif
 
+
+
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
+
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
@@ -156,5 +185,8 @@ void refresh_priority (void);
 void remove_waiting_donators (struct lock *l);
 bool thread_priority_compare (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 void max_priority_check (void);
+
+//PROJ 2 ADDED FUNCTIONS
+struct process_tracker* initialize_process_tracker(int pid);
 
 #endif /* threads/thread.h */

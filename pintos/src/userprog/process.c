@@ -18,6 +18,7 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "userprog/syscall.h"
 
 static thread_func start_process NO_RETURN;
 
@@ -100,6 +101,9 @@ start_process (void *cmd_line_)
   //Load the executable using the arguments
   success = load (cline->file_name, &if_.eip, &if_.esp, &(cline->arguments));
 
+  if (success) thread_current()->pt->load = LOADED;
+  else thread_current()->pt->load = LOAD_FAILED;
+
   /* If load failed, quit. */
   //palloc_free_page (file_name);
   if (!success) 
@@ -127,7 +131,21 @@ start_process (void *cmd_line_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  return -1;
+	struct process_tracker* pt = pid_lookup(child_tid);
+
+	/* Make sure process tracker exists and its not already waiting */
+	if (!pt || cp->wait) return ERROR;
+
+	/* Set the waiting status to true and wait until the process has exited */
+	pt->wait = true;
+	while (!pt->exit) barrier();
+
+	//Get the status, free the child and return the status
+	int status = pt->status;
+	list_remove(&pt->elem);
+	free(pt);
+
+	return status;
 }
 
 /* Free the current process's resources. */
@@ -136,6 +154,22 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
+
+  //Close all the files opened by the process
+  close_all_files();
+
+  //Free all the children
+  struct list_elem *e;
+  struct process_tracker *pt;
+  for (e = list_begin(&cur->children); e != list_end(&cur->children); e = list_next(e))
+  {
+	  pt = list_entry(e, struct process_tracker, elem);
+	  list_remove(&pt->elem);
+	  free(pt);
+  }
+
+  //Set the exit value so that the parent knows the process has exited
+  if (thread_alive(t->parent_id)) t->pt->exit_status = status;
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -548,7 +582,7 @@ setup_stack (void **esp, char** argv, int argc)
   return success;
 }
 
-//Adapted from https://github.com/pindexis/pintos-project2/blob/master/userprog/process.c
+//Adapted from https://github.com/pindexis/pintos-project2/blob/master/userprog/process.c (Function originally called 'extract_command_args')
 static int
 get_args(char* file_name, char** arguments, char* argv[])
 {
