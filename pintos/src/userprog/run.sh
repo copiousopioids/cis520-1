@@ -1,7 +1,7 @@
 #!/bin/sh
 
-export PATH=/root/cis520/pintos/src/utils:/root/cis520/usr/local/bin:$PATH
-export BXSHARE=/root/cis520/usr/local/share/bochs
+export PATH=/home/b/bkrull/cis520/pintos/src/utils:/root/cis520/usr/local/bin:$PATH
+export BXSHARE=/home/b/bkrull/cis520/usr/local/share/bochs
 
 clear
 clear
