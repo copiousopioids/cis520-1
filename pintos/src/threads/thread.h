@@ -24,7 +24,7 @@ enum load_status
 struct process_tracker 
 {
 	int pid;					/* Process ID - Essentially the same as tid */
-	load_status load;			/* The load status of the process */
+	enum load_status load;			/* The load status of the process */
 	bool wait;					/* Tracks if the parent is waiting on it */
 	bool exit;					/* Tracks if exit has been called on it */
 	int exit_status;			/* Process exit status - "Conventionally, a status of 0 indicates success and nonzero values indicate errors.*/
@@ -188,5 +188,6 @@ void max_priority_check (void);
 
 //PROJ 2 ADDED FUNCTIONS
 struct process_tracker* initialize_process_tracker(int pid);
+bool thread_alive(tid_t id);
 
 #endif /* threads/thread.h */

@@ -18,6 +18,7 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h" //FIX?: added to for barrier() call 
 #include "userprog/syscall.h"
 
 static thread_func start_process NO_RETURN;
@@ -37,6 +38,7 @@ https://github.com/pindexis/pintos-project2
 //Used in load, values are arbitrary
 #define CMD_ARGS_MAX 30
 //#define CMD_LENGTH_MAX 100
+#define ERROR -1
 
 //Added an arguments parameter for the load function
 static bool load (const char *cmdline, void (**eip) (void), void **esp, char **arguments);
@@ -131,19 +133,21 @@ start_process (void *cmd_line_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-	struct process_tracker* pt = pid_lookup(child_tid);
+	struct process_tracker* pt = pid_lookup(child_tid); //FIX?: remove pointer (*)
 
 	/* Make sure process tracker exists and its not already waiting */
-	if (!pt || cp->wait) return ERROR;
+	if (!pt || pt->wait) //FIX?: cp -> pt? cd does not exist
+    return ERROR; 
 
 	/* Set the waiting status to true and wait until the process has exited */
 	pt->wait = true;
-	while (!pt->exit) barrier();
+	while (!pt->exit) 
+    barrier();
 
 	//Get the status, free the child and return the status
-	int status = pt->status;
+	int status = pt->exit_status; //FIX?: pt->status to pt->exit_status? status does not exist
 	list_remove(&pt->elem);
-	free(pt);
+	free(pt); 
 
 	return status;
 }
@@ -167,9 +171,6 @@ process_exit (void)
 	  list_remove(&pt->elem);
 	  free(pt);
   }
-
-  //Set the exit value so that the parent knows the process has exited
-  if (thread_alive(t->parent_id)) t->pt->exit_status = status;
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */

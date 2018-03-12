@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h" //FIX?: Add for malloc() call
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -114,8 +115,6 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
-
-
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -530,7 +529,8 @@ init_thread (struct thread *t, const char *name, int priority)
 
   //Added initializations for syscall file system stuff
   list_init(&t->file_list);
-  t->fd = MIN_FD;
+  list_init(&t->children); //Is this needed or is it somewhere else?
+  t->next_handle = MIN_FD; //FIX?: fd does not exist, is it supposded to be "next_handle"?
 
 }
 
@@ -743,11 +743,11 @@ try_wake_up_sleeping_threads (int64_t global_ticks)
       struct thread *t = list_entry( front, struct thread, elem );
 	  
       /* Since sleeping_list is ordered by wakeup time, if the front element doesn't 
-		 need to be woken up, then none of them do*/
+		      need to be woken up, then none of them do*/
       if ( t->sleeping_ticks > global_ticks ) return;
 	  
       /* Must pop from blocked sleeping list before adding thread to the ready list.
-		 Otherwise thread.elem will be in 2 lists simultaneously, which isn't allowed.*/
+		      Otherwise thread.elem will be in 2 lists simultaneously, which isn't allowed.*/
       list_pop_front(&sleeping_list);
       thread_unblock(t);
     }
@@ -790,10 +790,10 @@ refresh_priority (void)
   //If we have donators available
   if (!list_empty(&t->donations))
     {
-	  //Get the donator with highest priority (list should be sorted by highest priority)
+	    //Get the donator with highest priority (list should be sorted by highest priority)
       struct thread *donator = list_entry (list_front(&t->donations), struct thread, donation_elem);
 
-	  //If the donator's priority is higher, take it.
+	    //If the donator's priority is higher, take it.
       if (donator->priority > t->priority)
         t->priority = donator->priority;
     }
@@ -809,15 +809,15 @@ remove_waiting_donators (struct lock *l)
   //Loop through all the donators in the list
   for (struct list_elem *next; donator != list_end(&thread_current()->donations); donator = next)
     {
-		//Get the thread from the list element
+		  //Get the thread from the list element
 	    struct thread *t = list_entry(donator, struct thread, donation_elem);
 		
-		//Get the next donator before attempting to remove the current one
+		  //Get the next donator before attempting to remove the current one
 	    next = list_next(donator);
 	
 	    //If the thread was waiting on the lock, remove it from the list
 	    if(t->wait_on_lock == l) 
-		  list_remove(donator);
+		    list_remove(donator);
     }
 }
 
@@ -827,7 +827,25 @@ struct process_tracker* initialize_process_tracker(int pid)
 	cp->pid = pid;
 	cp->load = NOT_LOADED;
 	cp->exit = cp->wait = false;
-	list_push_back(&thread_current()->child_list,
-		&cp->elem);
+	list_push_back(&thread_current()->children, &cp->elem);//FIX?: ->child_list to ->children
 	return cp;
+}
+
+
+/* Go through the list of active threads and return true if 'id' is equal to the id 
+    of a thread in the list */
+bool
+thread_alive( tid_t id )
+{
+  //Look for 'id' in 'all_list'
+  struct thread *t;
+  struct list_elem *e;
+  for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e))
+  {
+    t = list_entry(e, struct thread, elem);
+	  if(t->parent_id == id)
+      return true;
+  }
+  
+  return false;
 }

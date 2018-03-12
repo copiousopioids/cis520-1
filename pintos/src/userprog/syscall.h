@@ -9,7 +9,7 @@ typedef int pid_t;
 #define PID_ERROR ((pid_t) -1)
 
 void syscall_init (void);
-void close_all_files();
-struct process_tracker pid_lookup(int pid);
+void close_all_files( void );
+struct process_tracker* pid_lookup(int pid); //FIX?: Add '*' to return pointer
 
 #endif /* userprog/syscall.h */

@@ -12,6 +12,7 @@
 #include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/thread.h"
+#include "threads/synch.h" //FIX?: Add include for locks
 #include "threads/vaddr.h"
 
 #define ARG_LIMIT 3
@@ -25,7 +26,8 @@ static struct file_binder* fd_lookup(int fd);
 
 static void syscall_handler(struct intr_frame *);
 static void verify_valid_ptr(const void *vaddr);
-static void get_arguments(struct intr_frame *f, int *arg, int num_args)
+static void get_arguments(struct intr_frame *f, int *arg, int num_args);
+static void verify_valid_buffer(void* buffer, unsigned size); //FIX?: Add static and prototype
 
 static void halt(void);
 static void exit(int status);
@@ -105,11 +107,11 @@ syscall_handler(struct intr_frame *f UNUSED)
 		f->eax = create((const char *)args[0], (unsigned)args[1]);
 		break;
 
-	case SYS_REMOVE:
+	case SYS_REMOVE: /* (const char *file) 1 args */
 		printf("SYS_REMOVE system call!\n");
 		get_arguments(f, &args[0], 1);
 		args[0] = deref_user_pointer_to_kernel((const void *)args[0]);
-		f->eax = create((const char *)args[0], (unsigned)args[1]);
+		f->eax = remove((const char *)args[0]); //Change from create() to remove()
 		break;
 
 	case SYS_OPEN:    /* const char *file) 1 arg */
@@ -212,7 +214,8 @@ get_arguments(struct intr_frame *f, int *arg, int num_args)
 	}
 }
 
-void verify_valid_buffer(void* buffer, unsigned size)
+static void 
+verify_valid_buffer(void* buffer, unsigned size)
 {
 	char* local_buffer = (char *)buffer;
 	for (unsigned i = 0; i < size; i++)
@@ -225,9 +228,6 @@ void verify_valid_buffer(void* buffer, unsigned size)
 
 /***************************************************
 *   System Call functions
-*     - Be sure to update the declaration in
-*        syscall.h if you udpate it here. Most
-*        will need to be updated.
 ***************************************************/
 
 static void
@@ -262,10 +262,10 @@ exec(const char *cmd_line)
 	ASSERT(pt);
 
 	//Wait until the process is loaded
-	while (pt->load == NOT_LOADED) barrier();
+	while (pt->load == NOT_LOADED) barrier(); 
 
 	//If loading fails something went wrong
-	if (pt->load = LOAD_FAILED) return ERROR;
+	if (pt->load == LOAD_FAILED) return ERROR; //FIX?: = -> ==
 
 	//Reaching this means everything is good to go!
 	return pid;
@@ -281,7 +281,7 @@ static bool
 create(const char *file, unsigned initial_size)
 {
 	lock_acquire(&fs_lock);
-	bool success = filesys_remove(file);
+	bool success = filesys_create(file, initial_size); //FIX?: *_remove -> *_create
 	lock_release(&fs_lock);
 	return success;
 }
@@ -290,8 +290,8 @@ static bool
 remove(const char *file)
 {
 	lock_acquire(&fs_lock);
-	bool success = filesys_remove(file)
-		lock_release(&fs_lock);
+	bool success = filesys_remove(file);
+	lock_release(&fs_lock);
 	return success;
 }
 
@@ -303,7 +303,7 @@ static int
 open(const char *file)
 {
 	int fd = ERROR;
-	lock_aquire(&fs_lock);
+	lock_acquire(&fs_lock);
 	struct file *f = filesys_open(file);
 	//If the file opens
 	if (f)
@@ -325,7 +325,7 @@ filesize(int fd)
 	int size = ERROR;
 
 	lock_acquire(&fs_lock);
-	struct file_binder fb* = fd_lookup(fd);
+	struct file_binder* fb = fd_lookup(fd);
 	if (fb)
 	{
 		size = file_length(fb->file);
@@ -374,7 +374,7 @@ write(int fd, const void *buffer, unsigned size)
 	else
 	{
 		lock_acquire(&fs_lock);
-		struct file_binder fb = fd_lookup(fd);
+		struct file_binder* fb = fd_lookup(fd);
 		if (fb)
 		{
 			bytes_written = file_write(fb->file, buffer, size);
@@ -388,6 +388,7 @@ static void
 seek(int fd, unsigned position)
 {
 	lock_acquire(&fs_lock);
+	struct file_binder* fb = fd_lookup(fd);
 	if (fb)
 	{
 		file_seek(fb->file, position);
@@ -401,7 +402,7 @@ tell(int fd)
 	int offset = ERROR;
 
 	lock_acquire(&fs_lock);
-	struct file_binder fb = fd_lookup(fd);
+	struct file_binder* fb = fd_lookup(fd);
 	if (fb)
 	{
 		offset = file_tell(fb->file);
@@ -415,7 +416,7 @@ static void
 close(int fd)
 {
 	lock_acquire(&fs_lock);
-	struct file_binder fb = fd_lookup(fd);
+	struct file_binder* fb = fd_lookup(fd);
 	if (fb)
 	{
 		file_close(fb->file);
@@ -427,7 +428,8 @@ close(int fd)
 /* Helpers */
 
 /* Returns the file_binder associated with the given fd or NULL if there is none */
-struct file_binder* fd_lookup(int fd)
+struct file_binder* 
+fd_lookup(int fd)
 {
 	struct thread *cur = thread_current();
 	struct list_elem *e;
@@ -444,9 +446,10 @@ struct file_binder* fd_lookup(int fd)
 	return NULL;
 }
 
-void close_all_files()
+void 
+close_all_files( void )
 {
-	lock_aquire(&fs_lock);
+	lock_acquire(&fs_lock);
 	struct thread *cur = thread_current();
 	struct list_elem *e;
 	struct file_binder *fb;
@@ -458,16 +461,17 @@ void close_all_files()
 		list_remove(&fb->elem);
 		free(fb);
 	}
-	lock_release();
+	lock_release(&fs_lock);
 }
 
-struct process_tracker pid_lookup(int pid)
+struct process_tracker* 
+pid_lookup(int pid) //FIX?: add '*' to return pointer
 {
 	struct thread *cur = thread_current();
 	struct list_elem *e;
 	struct process_tracker *pt;
 
-	for (e = list_begin(&cur->children); e != list_end(&t->children); e = list_next(e))
+	for (e = list_begin(&cur->children); e != list_end(&cur->children); e = list_next(e))
 	{
 		pt = list_entry(e, struct process_tracker, elem);
 		if (pid == pt->pid) return pt;
