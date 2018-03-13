@@ -274,8 +274,7 @@ struct Elf32_Phdr
 
 
 //Added file name and arguments parameters to the stack setup function
-//static bool setup_stack(void **esp, char** argv, int argc);
-static bool setup_stack (void **esp, const char *file_name);
+static bool setup_stack(void **esp, char** argv, int argc);
 
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
@@ -383,12 +382,11 @@ load (const char *file_name, void (**eip) (void), void **esp, char **arguments)
     }
 
   //Create argv
-  //char *argv[CMD_ARGS_MAX];
-  //int argc =  get_args(file_name, arguments, argv);
+  char *argv[CMD_ARGS_MAX];
+  int argc =  get_args(file_name, arguments, argv);
 
   //Set up the stack using argv
-  //if (!setup_stack (esp, argv, argc))
-  if(!setup_stack (esp, file_name))
+  if (!setup_stack (esp, argv, argc))
     goto done;
 
   /* Start address. */
@@ -513,109 +511,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
 static bool
-setup_stack (void **esp, const char *file_name)
-{
-  uint8_t *kpage;
-  bool success = false;
-
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-  if (kpage != NULL)
-    {
-      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-      if (success) 
-        {
-  	      *esp = PHYS_BASE;
-
-          uint8_t *argstr_head;
-          char *cmd_name = thread_current ()->name;
-          int strlength, total_length = 0;
-          int argc = 0;
-
-          /*push the arguments string into stack*/
-          strlength = strlen(file_name) + 1;
-          *esp -= strlength;
-          memcpy(*esp, file_name, strlength);
-          total_length += strlength;
-
-          /*push command name into stack*/
-          strlength = strlen(cmd_name) + 1;
-          *esp -= strlength;
-          argstr_head = *esp;
-          memcpy(*esp, cmd_name, strlength);
-          total_length += strlength;
-
-          /*set alignment, get the starting address, modify *esp */
-          *esp -= 4 - total_length % 4;
-
-          /* push argv[argc] null into the stack */
-          *esp -= 4;
-          * (uint32_t *) *esp = (uint32_t) NULL;
-
-          /* scan throught the file name with arguments string downward,
-           * using the cur_addr and total_length above to define boundary.
-           * omitting the beginning space or '\0', but for every encounter
-           * after, push the last non-space-and-'\0' address, which is current
-           * address minus 1, as one of argv to the stack, and set the space to
-           * '\0', multiple adjancent spaces and '0' is treated as one.
-           */
-          int i = total_length - 1;
-          /*omitting the starting space and '\0' */
-          while (*(argstr_head + i) == ' ' ||  *(argstr_head + i) == '\0')
-            {
-              if (*(argstr_head + i) == ' ')
-                {
-                  *(argstr_head + i) = '\0';
-                }
-              i--;
-            }
-
-          /*scan through args string, push args address into stack*/
-          char *mark;
-          for (mark = (char *)(argstr_head + i); i > 0;
-                i--, mark = (char*)(argstr_head+i))
-            {
-              /*detect args, if found, push it's address to stack*/
-              if ( (*mark == '\0' || *mark == ' ') &&
-                   (*(mark+1) != '\0' && *(mark+1) != ' '))
-                {
-                  *esp -= 4;
-                  * (uint32_t *) *esp = (uint32_t) mark + 1;
-                  argc++;
-                }
-              /*set space to '\0', so that each arg string will terminate*/
-              if (*mark == ' ')
-                *mark = '\0';
-            }
-
-          /*push one more arg, which is the command name, into stack*/
-          *esp -= 4;
-          * (uint32_t *) *esp = (uint32_t) argstr_head;
-          argc++;
-
-          /*push argv*/
-          * (uint32_t *) (*esp - 4) = *(uint32_t *) esp;
-          *esp -= 4;
-
-          /*push argc*/
-          *esp -= 4;
-          * (int *) *esp = argc;
-
-          /*push return address*/
-          *esp -= 4;
-          * (uint32_t *) *esp = 0x0;
-        } 
-      else
-        palloc_free_page (kpage);
-    }
-
-  return success;
-}
-
-
-#if 0
-/* Create a minimal stack by mapping a zeroed page at the top of
-   user virtual memory. */
-static bool
 setup_stack (void **esp, char** argv, int argc) 
 {
   uint8_t *kpage;
@@ -632,15 +527,19 @@ setup_stack (void **esp, char** argv, int argc)
 
 		      //Keep an array of pointers to the addresses where argv get stored
 		      char * argpointers[argc+1];
-
+        
 		      //Push argv entries to the stack in reverse order, saving the address where each entry is stored
 		      for (int i = argc - 1; i >= 0; i--) 
-		        {
+		        {              
 			        *esp -= (strlen(argv[i]) + 1) * sizeof(char);
+              printf("string length of %s = %d\n", argv[i], (strlen(argv[i]) + 1) * sizeof(char));
 			        argpointers[i] = *esp;
-			        memcpy(*esp, argv[i], strlen(argv[i]) + 1);
+              printf("address of esp = %p\n", *esp);
+              printf("address pushed = %p\n", argpointers[i]);
+              memcpy(*esp, argv[i], strlen(argv[i]) + 1);
+              printf("esp is now = %s\n", *esp);
 		        }
-
+        
 		      //Align the stack and set up the sentinel
 		      argpointers[argc] = 0;
 		      int i = (size_t)*esp % WORD_SIZE;
@@ -649,22 +548,22 @@ setup_stack (void **esp, char** argv, int argc)
 			        *esp -= i;
 			        memcpy(*esp, &argv[argc], i);
 		        }
-
+        
 		      //Push the sentinel and all the adresses of argv entries
 		      for (i = argc; i >= 0; i--)
 		        {
 			        *esp -= WORD_SIZE;
 			        memcpy(*esp, &argpointers[i], WORD_SIZE);
 		        }
-
+        
 		      /* Method 1 of pushing argv to stack - 99% sure it works */
 		      //Save the current esp (address of argv[0])
 		      char *old = *esp;
 		      //Push argv (address of argv[0])
 		      *esp -= WORD_SIZE;
 		      memcpy(*esp, &old, WORD_SIZE);
-		  
-
+        
+        
 		      /* Method 2 of pushing argv to stack - cleaner, but only 87% sure it works
 		      //Push argv (address of argv[0])
 		      *esp -= WORD_SIZE;
@@ -672,7 +571,7 @@ setup_stack (void **esp, char** argv, int argc)
 		      */
         
 		      /*Push argc - move esp by WORD_SIZE to keep return address aligned, but only copy the size of the int. It
-			        shouldn't matter, since with 32/64 bit machines sizeof(int)==sizeof(char *) but just to be safe */
+			    	  shouldn't matter, since with 32/64 bit machines sizeof(int)==sizeof(char *) but just to be safe */
 		      *esp -= WORD_SIZE;
 		      memcpy(*esp, &argpointers, sizeof(int));
         
@@ -681,13 +580,12 @@ setup_stack (void **esp, char** argv, int argc)
 		      memcpy(*esp, &argpointers[argc], sizeof(int));
 	      }
       
-      else
-		    palloc_free_page(kpage);
-	  }
+	  else
+		  palloc_free_page(kpage);
+	}
 
   return success;
 }
-#endif
 
 //Adapted from https://github.com/pindexis/pintos-project2/blob/master/userprog/process.c (Function originally called 'extract_command_args')
 static int
