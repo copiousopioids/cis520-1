@@ -77,58 +77,58 @@ syscall_handler(struct intr_frame *f UNUSED)
 	switch (call_nmbr)
 	{
 	case SYS_HALT:    /* (void) 0 args */
-		printf("SYS_HALT system call!\n");
+		//printf("SYS_HALT system call!\n");
 		halt();
 		break;
 
 	case SYS_EXIT:    /* (int status) 1 arg */
-		printf("SYS_EXIT system call!\n");
+		//printf("SYS_EXIT system call!\n");
 		get_arguments(f, &args[0], 1);
 		exit(args[0]);
 		break;
 
 	case SYS_EXEC:    /* (const char *cmd_line) 1 arg */
-		printf("SYS_EXEC system call!\n");
+		//printf("SYS_EXEC system call!\n");
 		get_arguments(f, &args[0], 1);
 		args[0] = deref_user_pointer_to_kernel((const void *)args[0]);
 		f->eax = exec((const char *)args[0]);
 		break;
 
 	case SYS_WAIT:    /* (pid_t pid) 1 arg */
-		printf("SYS_WAIT system call!\n");
+		//printf("SYS_WAIT system call!\n");
 		get_arguments(f, &args[0], 1);
 		f->eax = wait(args[0]);
 		break;
 
 	case SYS_CREATE:  /* (const char *file, unsigned initial_size) 2 args */
-		printf("SYS_CREATE system call!\n");
+		//printf("SYS_CREATE system call!\n");
 		get_arguments(f, &args[0], 2);
 		args[0] = deref_user_pointer_to_kernel((const void *)args[0]);
 		f->eax = create((const char *)args[0], (unsigned)args[1]);
 		break;
 
 	case SYS_REMOVE: /* (const char *file) 1 args */
-		printf("SYS_REMOVE system call!\n");
+		//printf("SYS_REMOVE system call!\n");
 		get_arguments(f, &args[0], 1);
 		args[0] = deref_user_pointer_to_kernel((const void *)args[0]);
 		f->eax = remove((const char *)args[0]); //Change from create() to remove()
 		break;
 
 	case SYS_OPEN:    /* const char *file) 1 arg */
-		printf("SYS_OPEN system call!\n");
+		//printf("SYS_OPEN system call!\n");
 		get_arguments(f, &args[0], 1);
 		args[0] = deref_user_pointer_to_kernel((const void *)args[0]);
 		f->eax = open((const char *)args[0]);
 		break;
 
 	case SYS_FILESIZE:/* (int fd) 1 arg */
-		printf("SYS_FILESIZE system call!\n");
+		//printf("SYS_FILESIZE system call!\n");
 		get_arguments(f, &args[0], 1);
 		f->eax = filesize(args[0]);
 		break;
 
 	case SYS_READ:   /* (int fd, void *buffer, unsigned size) 3 args */
-		printf("SYS_WRITE system call!\n");
+		//printf("SYS_WRITE system call!\n");
 		get_arguments(f, &args[0], 3);
 		verify_valid_buffer((void *)args[1], (unsigned)args[2]);
 		args[1] = deref_user_pointer_to_kernel((const void *)args[1]);
@@ -136,27 +136,27 @@ syscall_handler(struct intr_frame *f UNUSED)
 		break;
 
 	case SYS_WRITE:   /* (int fd, void *buffer, unsigned size) 3 args */
-		printf("SYS_WRITE system call!\n");
+		//printf("SYS_WRITE system call!\n");
 		get_arguments(f, &args[0], 3);
-		verify_valid_buffer((void *)args[1], (unsigned)args[2]);
-		args[1] = deref_user_pointer_to_kernel((const void *)args[1]);
+		//verify_valid_buffer((void *)args[1], (unsigned)args[2]);
+		//args[1] = deref_user_pointer_to_kernel((const void *)args[1]);
 		f->eax = write(args[0], (const void *)args[1], (unsigned)args[2]);
 		break;
 
 	case SYS_SEEK:    /* (int fd, unsigned position) 2 args */
-		printf("SYS_SEEK system call!\n");
+		//printf("SYS_SEEK system call!\n");
 		get_arguments(f, &args[0], 2);
 		seek(args[0], (unsigned)args[1]);
 		break;
 
 	case SYS_TELL:    /* (int fd) 1 args */
-		printf("SYS_TELL system call!\n");
+		//printf("SYS_TELL system call!\n");
 		get_arguments(f, &args[0], 1);
 		f->eax = tell(args[0]);
 		break;
 
 	case SYS_CLOSE:   /* (int fd)  1 arg */
-		printf("SYS_CLOSE system call!\n");
+		//printf("SYS_CLOSE system call!\n");
 		get_arguments(f, &args[0], 1);
 		close(args[0]);
 		break;
@@ -245,6 +245,7 @@ exit(int status)
 	so that it can find the exit status */
 	if (thread_alive(t->parent_id)) t->pt->exit_status = status;
 
+	t->pt->exit = true; //FIX?: Added this line to show that (child) thread has called exit
 	//Process termination message. Thread name is set in process_execute
 	printf("%s: exit(%d)\n", t->name, status);
 	thread_exit();
@@ -365,7 +366,35 @@ read(int fd, void *buffer, unsigned size)
 static int
 write(int fd, const void *buffer, unsigned size)
 {
+	unsigned buffer_size = size;
+  	void *buffer_tmp = buffer;
 	int bytes_written = ERROR;
+
+  	//Check the user memory buffer is completely within the user space
+  	while (buffer_tmp != NULL)
+      {
+		//Validate that the address is valid
+      	verify_valid_ptr (buffer_tmp);
+      
+        //Advance by PGSIZE
+        if (buffer_size > PGSIZE)
+	      {
+	     	buffer_tmp += PGSIZE;
+	  		buffer_size -= PGSIZE;
+		  }
+      	else if (buffer_size == 0)
+		  {
+			//Done checking, terminate the loop
+	  		buffer_tmp = NULL;
+		  }	 
+      	else
+		  {
+	  		//Last loop possible, will be null next
+	  		buffer_tmp = buffer + size - 1;
+	  		buffer_size = 0;
+		  }
+      }
+
 	if (fd == 1)
 	{
 		putbuf(buffer, size);

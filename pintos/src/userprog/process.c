@@ -305,7 +305,7 @@ load (const char *file_name, void (**eip) (void), void **esp, char **arguments)
   file = filesys_open (file_name);
   if (file == NULL) 
     {
-      printf ("load: %s: open failed\n", file_name);
+      //printf ("load: %s: open failed\n", file_name); //No printfs in this file? -- https://k-state.instructure.com/courses/51666/discussion_topics/335992 
       goto done; 
     }
 
@@ -318,7 +318,7 @@ load (const char *file_name, void (**eip) (void), void **esp, char **arguments)
       || ehdr.e_phentsize != sizeof (struct Elf32_Phdr)
       || ehdr.e_phnum > 1024) 
     {
-      printf ("load: %s: error loading executable\n", file_name);
+      //printf ("load: %s: error loading executable\n", file_name); //No printfs in this file? -- https://k-state.instructure.com/courses/51666/discussion_topics/335992 
       goto done; 
     }
 
@@ -515,7 +515,7 @@ setup_stack (void **esp, char** argv, int argc)
 {
   uint8_t *kpage;
   bool success = false;
-  char **args;
+  //char **args;
 
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
@@ -532,14 +532,10 @@ setup_stack (void **esp, char** argv, int argc)
 		      for (int i = argc - 1; i >= 0; i--) 
 		        {              
 			        *esp -= (strlen(argv[i]) + 1) * sizeof(char);
-              printf("string length of %s = %d\n", argv[i], (strlen(argv[i]) + 1) * sizeof(char));
 			        argpointers[i] = *esp;
-              printf("address of esp = %p\n", *esp);
-              printf("address pushed = %p\n", argpointers[i]);
               memcpy(*esp, argv[i], strlen(argv[i]) + 1);
-              printf("esp is now = %s\n", *esp);
 		        }
-        
+
 		      //Align the stack and set up the sentinel
 		      argpointers[argc] = 0;
 		      int i = (size_t)*esp % WORD_SIZE;
@@ -573,11 +569,15 @@ setup_stack (void **esp, char** argv, int argc)
 		      /*Push argc - move esp by WORD_SIZE to keep return address aligned, but only copy the size of the int. It
 			    	  shouldn't matter, since with 32/64 bit machines sizeof(int)==sizeof(char *) but just to be safe */
 		      *esp -= WORD_SIZE;
-		      memcpy(*esp, &argpointers, sizeof(int));
+		      //memcpy(*esp, &argpointers, sizeof(int));
+		      *(int *) *esp = argc;
         
 		      //Push fake return address
 		      *esp -= WORD_SIZE;
 		      memcpy(*esp, &argpointers[argc], sizeof(int));
+
+          //what dump should look like -- http://www.scs.stanford.edu/15au-cs140/pintos/pintos_3.html#SEC51
+          //hex_dump( *esp, *esp, 50, 1 );
 	      }
       
 	  else

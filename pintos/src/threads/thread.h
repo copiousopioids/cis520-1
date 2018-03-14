@@ -23,12 +23,12 @@ enum load_status
 
 struct process_tracker 
 {
-	int pid;					/* Process ID - Essentially the same as tid */
-	enum load_status load;			/* The load status of the process */
-	bool wait;					/* Tracks if the parent is waiting on it */
-	bool exit;					/* Tracks if exit has been called on it */
+	int pid;					    /* Process ID - Essentially the same as tid */
+	enum load_status load;/* The load status of the process */
+	bool wait;					  /* Tracks if the parent is waiting on it */
+	bool exit;					  /* Tracks if exit has been called on it */
 	int exit_status;			/* Process exit status - "Conventionally, a status of 0 indicates success and nonzero values indicate errors.*/
-	struct list_elem elem;		/* List element to place in parent's children list */
+	struct list_elem elem;/* List element to place in parent's children list */
 };
 
 /* Thread identifier type.
