@@ -23,8 +23,6 @@
 /* Helpers */
 static struct file_binder* fd_lookup(int fd);
 
-
-
 static void syscall_handler(struct intr_frame *);
 static void verify_valid_ptr(const void *vaddr);
 static void get_arguments(struct intr_frame *f, int *arg, int num_args);
@@ -237,7 +235,7 @@ verify_valid_buffer(void* buffer, unsigned size)
 /***************************************************
 *   System Call functions
 ***************************************************/
-
+struct cmd_line cline;
 static void
 halt(void)
 {
@@ -259,10 +257,24 @@ exit(int status)
 	thread_exit();
 }
 
+void addclinetokernel(void* cline_)
+{
+  cline.file_name = ((struct cmd_line *)cline_)->file_name;
+  cline.arguments = ((struct cmd_line *)cline_)->arguments;
+}
+
+struct cmd_line * getclinetokernel(void)
+{
+	return &cline;
+}
+
 static pid_t
 exec(const char *cmd_line)
 {
 	//Begin execution of a child process
+	printf("cmd_line = %s\n", cmd_line);
+	//memcpy(&cline, cmd_line, sizeof(cline));
+	//ASSERT(0);
 	pid_t pid = process_execute(cmd_line);
 
 	//Get the child's process tracker to see if it has loaded

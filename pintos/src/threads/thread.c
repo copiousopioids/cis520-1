@@ -56,12 +56,6 @@ struct kernel_thread_frame
     void *aux;                  /* Auxiliary data for function. */
   };
 
-struct cmd_line
-{
-	char *file_name;
-	char *arguments;
-};
-
 /* Statistics. */
 static long long idle_ticks;    /* # of timer ticks spent idle. */
 static long long kernel_ticks;  /* # of timer ticks in kernel threads. */

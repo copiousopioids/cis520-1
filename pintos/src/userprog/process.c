@@ -47,11 +47,6 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp, char **a
 //Function for taking apart the arguments and forming argv
 static int get_args(char* file_name, char** arguments, char* argv[]);
 
-struct cmd_line
-{
-	char *file_name;
-	char *arguments;
-};
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -77,6 +72,10 @@ process_execute (const char *file_name)
   cline.file_name = strtok_r(fn_copy, " ", &save_ptr);
   cline.arguments = save_ptr;
 
+
+  printf("cline.file_name = %s\n", cline.file_name );
+  printf("cline.arguments = %s\n", cline.arguments );
+  //ASSERT(0);
   // Create a new thread to execute the command line
   tid = thread_create (cline.file_name, PRI_DEFAULT, start_process, &cline);
   if (tid == TID_ERROR)
@@ -90,7 +89,7 @@ static void
 start_process (void *cmd_line_)
 {
   //Convert the argument to a cmd_line from a void
-  struct cmd_line *cline = cmd_line_;
+  struct cmd_line * cline = cmd_line_;
 
   struct intr_frame if_;
   bool success;
@@ -102,6 +101,10 @@ start_process (void *cmd_line_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   
   //Load the executable using the arguments
+  printf("cline->file_name = %s\n", cline->file_name );
+  printf("cline->arguments = %s\n", cline->arguments );
+  addclinetokernel(&cline);
+  cline = getclinetokernel();
   success = load (cline->file_name, &if_.eip, &if_.esp, &(cline->arguments));
   //success = load (thread_current()->name, &if_.eip, &if_.esp, &(cline->arguments));
   if (success)
