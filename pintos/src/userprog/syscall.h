@@ -18,7 +18,7 @@ void syscall_init (void);
 void close_all_files( void );
 struct process_tracker* pid_lookup(int pid); 
 void exit(int status);
-void addclinetokernel(void* cline_);
-struct cmd_line * getclinetokernel(void);
+void add_cline_to_kernel(void* cline_);
+struct cmd_line * get_cline_to_kernel(void);
 
 #endif /* userprog/syscall.h */

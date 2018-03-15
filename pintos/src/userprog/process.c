@@ -72,11 +72,8 @@ process_execute (const char *file_name)
   cline.file_name = strtok_r(fn_copy, " ", &save_ptr);
   cline.arguments = save_ptr;
 
-
-  printf("cline.file_name = %s\n", cline.file_name );
-  printf("cline.arguments = %s\n", cline.arguments );
-  //ASSERT(0);
   // Create a new thread to execute the command line
+  add_cline_to_kernel(&cline);
   tid = thread_create (cline.file_name, PRI_DEFAULT, start_process, &cline);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
@@ -89,7 +86,7 @@ static void
 start_process (void *cmd_line_)
 {
   //Convert the argument to a cmd_line from a void
-  struct cmd_line * cline = cmd_line_;
+  struct cmd_line * cline = get_cline_to_kernel();
 
   struct intr_frame if_;
   bool success;
@@ -101,12 +98,8 @@ start_process (void *cmd_line_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   
   //Load the executable using the arguments
-  printf("cline->file_name = %s\n", cline->file_name );
-  printf("cline->arguments = %s\n", cline->arguments );
-  addclinetokernel(&cline);
-  cline = getclinetokernel();
   success = load (cline->file_name, &if_.eip, &if_.esp, &(cline->arguments));
-  //success = load (thread_current()->name, &if_.eip, &if_.esp, &(cline->arguments));
+  
   if (success)
     thread_current()->pt->load = LOADED;
   else

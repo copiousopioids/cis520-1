@@ -50,6 +50,9 @@ int deref_user_pointer_to_kernel(const void *virtualaddr);
 //Lock for file system calls
 static struct lock fs_lock;
 
+//cmd_line cline to save in kernel space
+static struct cmd_line cline;
+
 /* Thing for binding a file descriptor handle to a file. */
 struct file_binder
 {
@@ -231,11 +234,23 @@ verify_valid_buffer(void* buffer, unsigned size)
 	}
 }
 
+/* Copy the cmd_line into kernel memory so that 'all' processes/threads can
+	access their aruments (needed for exec) */
+void add_cline_to_kernel(void* cline_)
+{
+  cline.file_name = ((struct cmd_line *)cline_)->file_name;
+  cline.arguments = ((struct cmd_line *)cline_)->arguments;
+}
+
+/* get the cmd_line from the kernel memory space (needed for exec) */
+struct cmd_line * get_cline_to_kernel(void)
+{
+	return &cline;
+}
 
 /***************************************************
 *   System Call functions
 ***************************************************/
-struct cmd_line cline;
 static void
 halt(void)
 {
@@ -257,24 +272,10 @@ exit(int status)
 	thread_exit();
 }
 
-void addclinetokernel(void* cline_)
-{
-  cline.file_name = ((struct cmd_line *)cline_)->file_name;
-  cline.arguments = ((struct cmd_line *)cline_)->arguments;
-}
-
-struct cmd_line * getclinetokernel(void)
-{
-	return &cline;
-}
-
 static pid_t
 exec(const char *cmd_line)
 {
 	//Begin execution of a child process
-	printf("cmd_line = %s\n", cmd_line);
-	//memcpy(&cline, cmd_line, sizeof(cline));
-	//ASSERT(0);
 	pid_t pid = process_execute(cmd_line);
 
 	//Get the child's process tracker to see if it has loaded
