@@ -10,6 +10,6 @@ typedef int pid_t;
 
 void syscall_init (void);
 void close_all_files( void );
-struct process_tracker* pid_lookup(int pid); //FIX?: Add '*' to return pointer
+struct process_tracker* pid_lookup(int pid); 
 
 #endif /* userprog/syscall.h */

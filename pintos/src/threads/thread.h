@@ -113,14 +113,14 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
-	// Need these for file system sys calls
-	struct list file_list;				/* List of file_binders */
-	int next_handle;					/* Next available fd handle */
+	  // Need these for file system sys calls
+	  struct list file_list;				      /* List of file_binders */
+	  int next_handle;					          /* Next available fd handle */
 
-	//Need these for wait/exec sys calls
-	struct list children;				/* List of childe processes */
-	tid_t parent_id;					/* Parent's tid/pid */
-	struct process_tracker* pt;			/* Pointer to the process tracker stored in the parent processes children list */
+	  //Need these for wait/exec sys calls
+	  struct list children;				        /* List of childe processes */
+	  tid_t parent_id;					          /* Parent's tid/pid */
+	  struct process_tracker* pt;			    /* Pointer to the process tracker stored in the parent processes children list */
 
     /* Priority Scheduling */
     int initial_priority;

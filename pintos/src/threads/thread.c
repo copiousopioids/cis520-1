@@ -11,7 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
-#include "threads/malloc.h" //FIX?: Add for malloc() call
+#include "threads/malloc.h" 
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -530,7 +530,7 @@ init_thread (struct thread *t, const char *name, int priority)
   //Added initializations for syscall file system stuff
   list_init(&t->file_list);
   list_init(&t->children); //Is this needed or is it somewhere else?
-  t->next_handle = MIN_FD; //FIX?: fd does not exist, is it supposded to be "next_handle"?
+  t->next_handle = MIN_FD; 
 
 }
 
@@ -827,7 +827,7 @@ struct process_tracker* initialize_process_tracker(int pid)
 	cp->pid = pid;
 	cp->load = NOT_LOADED;
 	cp->exit = cp->wait = false;
-	list_push_back(&thread_current()->children, &cp->elem);//FIX?: ->child_list to ->children
+	list_push_back(&thread_current()->children, &cp->elem);
 	return cp;
 }
 

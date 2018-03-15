@@ -12,12 +12,13 @@
 #include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/thread.h"
-#include "threads/synch.h" //FIX?: Add include for locks
+#include "threads/synch.h" 
 #include "threads/vaddr.h"
 
 #define ARG_LIMIT 3
 #define USER_VADDR_START ((void *) 0x08048000) // Defined in section 1.4.1 of Project Doc
 #define ERROR -1
+#define WORD_SIZE sizeof(char *)
 
 /* Helpers */
 static struct file_binder* fd_lookup(int fd);
@@ -27,7 +28,7 @@ static struct file_binder* fd_lookup(int fd);
 static void syscall_handler(struct intr_frame *);
 static void verify_valid_ptr(const void *vaddr);
 static void get_arguments(struct intr_frame *f, int *arg, int num_args);
-static void verify_valid_buffer(void* buffer, unsigned size); //FIX?: Add static and prototype
+static void verify_valid_buffer(void* buffer, unsigned size); 
 
 static void halt(void);
 static void exit(int status);
@@ -70,10 +71,11 @@ static void
 syscall_handler(struct intr_frame *f UNUSED)
 {
 	int args[ARG_LIMIT];
+	
 	verify_valid_ptr((const void*)f->esp);
+	//verify_valid_buffer( f->esp, WORD_SIZE);
 	uint32_t call_nmbr = (*(uint32_t *)f->esp);
 
-	/* Currently call thread_exit(); for every case until implemented */
 	switch (call_nmbr)
 	{
 	case SYS_HALT:    /* (void) 0 args */
@@ -128,7 +130,7 @@ syscall_handler(struct intr_frame *f UNUSED)
 		break;
 
 	case SYS_READ:   /* (int fd, void *buffer, unsigned size) 3 args */
-		//printf("SYS_WRITE system call!\n");
+		//printf("SYS_READ system call!\n");
 		get_arguments(f, &args[0], 3);
 		verify_valid_buffer((void *)args[1], (unsigned)args[2]);
 		args[1] = deref_user_pointer_to_kernel((const void *)args[1]);
@@ -138,8 +140,8 @@ syscall_handler(struct intr_frame *f UNUSED)
 	case SYS_WRITE:   /* (int fd, void *buffer, unsigned size) 3 args */
 		//printf("SYS_WRITE system call!\n");
 		get_arguments(f, &args[0], 3);
-		//verify_valid_buffer((void *)args[1], (unsigned)args[2]);
-		//args[1] = deref_user_pointer_to_kernel((const void *)args[1]);
+		verify_valid_buffer((void *)args[1], (unsigned)args[2]);
+		args[1] = deref_user_pointer_to_kernel((const void *)args[1]);
 		f->eax = write(args[0], (const void *)args[1], (unsigned)args[2]);
 		break;
 
@@ -162,8 +164,8 @@ syscall_handler(struct intr_frame *f UNUSED)
 		break;
 
 	default:          /* default case */
-		printf("Unkonwn system call! Exiting...\n");
-		thread_exit(); //TODO: exit differently with error code for debugging?
+		//printf("Unkonwn system call! Exiting...\n");
+		exit(ERROR); //TODO: exit differently with error code for debugging?
 		break;
 	}
 }
@@ -178,9 +180,11 @@ void verify_valid_ptr(const void *virtualaddr)
 	//null pointer
 	//pointer to unmapped virtual memory
 	//pointer to kernel virtual address space
-	if (virtualaddr < USER_VADDR_START || !is_user_vaddr(virtualaddr))
-		//terminate and free resources.
-		thread_exit();
+
+	//If pointer is null or outside user address space
+	if (virtualaddr == NULL || !is_user_vaddr(virtualaddr))//virtualaddr < USER_VADDR_START)
+		exit(-1);//terminate and free resources.
+
 }
 
 
@@ -266,7 +270,7 @@ exec(const char *cmd_line)
 	while (pt->load == NOT_LOADED) barrier(); 
 
 	//If loading fails something went wrong
-	if (pt->load == LOAD_FAILED) return ERROR; //FIX?: = -> ==
+	if (pt->load == LOAD_FAILED) return ERROR; 
 
 	//Reaching this means everything is good to go!
 	return pid;
@@ -282,7 +286,7 @@ static bool
 create(const char *file, unsigned initial_size)
 {
 	lock_acquire(&fs_lock);
-	bool success = filesys_create(file, initial_size); //FIX?: *_remove -> *_create
+	bool success = filesys_create(file, initial_size); 
 	lock_release(&fs_lock);
 	return success;
 }
@@ -366,34 +370,7 @@ read(int fd, void *buffer, unsigned size)
 static int
 write(int fd, const void *buffer, unsigned size)
 {
-	unsigned buffer_size = size;
-  	void *buffer_tmp = buffer;
 	int bytes_written = ERROR;
-
-  	//Check the user memory buffer is completely within the user space
-  	while (buffer_tmp != NULL)
-      {
-		//Validate that the address is valid
-      	verify_valid_ptr (buffer_tmp);
-      
-        //Advance by PGSIZE
-        if (buffer_size > PGSIZE)
-	      {
-	     	buffer_tmp += PGSIZE;
-	  		buffer_size -= PGSIZE;
-		  }
-      	else if (buffer_size == 0)
-		  {
-			//Done checking, terminate the loop
-	  		buffer_tmp = NULL;
-		  }	 
-      	else
-		  {
-	  		//Last loop possible, will be null next
-	  		buffer_tmp = buffer + size - 1;
-	  		buffer_size = 0;
-		  }
-      }
 
 	if (fd == 1)
 	{
@@ -494,7 +471,7 @@ close_all_files( void )
 }
 
 struct process_tracker* 
-pid_lookup(int pid) //FIX?: add '*' to return pointer
+pid_lookup(int pid) 
 {
 	struct thread *cur = thread_current();
 	struct list_elem *e;

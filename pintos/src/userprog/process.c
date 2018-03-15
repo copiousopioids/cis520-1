@@ -18,7 +18,7 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
-#include "threads/synch.h" //FIX?: added to for barrier() call 
+#include "threads/synch.h" 
 #include "userprog/syscall.h"
 
 static thread_func start_process NO_RETURN;
@@ -131,12 +131,12 @@ start_process (void *cmd_line_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
-	struct process_tracker* pt = pid_lookup(child_tid); //FIX?: remove pointer (*)
+	struct process_tracker* pt = pid_lookup(child_tid); 
 
 	/* Make sure process tracker exists and its not already waiting */
-	if (!pt || pt->wait) //FIX?: cp -> pt? cd does not exist
+	if (!pt || pt->wait) 
     return ERROR; 
 
 	/* Set the waiting status to true and wait until the process has exited */
@@ -145,7 +145,7 @@ process_wait (tid_t child_tid UNUSED)
     barrier();
 
 	//Get the status, free the child and return the status
-	int status = pt->exit_status; //FIX?: pt->status to pt->exit_status? status does not exist
+	int status = pt->exit_status; 
 	list_remove(&pt->elem);
 	free(pt); 
 
@@ -515,7 +515,6 @@ setup_stack (void **esp, char** argv, int argc)
 {
   uint8_t *kpage;
   bool success = false;
-  //char **args;
 
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
