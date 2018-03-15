@@ -39,6 +39,7 @@ https://github.com/pindexis/pintos-project2
 #define CMD_ARGS_MAX 30
 //#define CMD_LENGTH_MAX 100
 #define ERROR -1
+#define USER_VADDR_START ((void *) 0x08048000) // Defined in section 1.4.1 of Project Doc
 
 //Added an arguments parameter for the load function
 static bool load (const char *cmdline, void (**eip) (void), void **esp, char **arguments);
@@ -99,12 +100,14 @@ start_process (void *cmd_line_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-
+  
   //Load the executable using the arguments
   success = load (cline->file_name, &if_.eip, &if_.esp, &(cline->arguments));
-
-  if (success) thread_current()->pt->load = LOADED;
-  else thread_current()->pt->load = LOAD_FAILED;
+  //success = load (thread_current()->name, &if_.eip, &if_.esp, &(cline->arguments));
+  if (success)
+    thread_current()->pt->load = LOADED;
+  else
+    thread_current()->pt->load = LOAD_FAILED;
 
   /* If load failed, quit. */
   //palloc_free_page (file_name);
@@ -305,10 +308,9 @@ load (const char *file_name, void (**eip) (void), void **esp, char **arguments)
   file = filesys_open (file_name);
   if (file == NULL) 
     {
-      //printf ("load: %s: open failed\n", file_name); //No printfs in this file? -- https://k-state.instructure.com/courses/51666/discussion_topics/335992 
+      printf ("load: %s: open failed\n", file_name); 
       goto done; 
     }
-
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)
@@ -318,7 +320,7 @@ load (const char *file_name, void (**eip) (void), void **esp, char **arguments)
       || ehdr.e_phentsize != sizeof (struct Elf32_Phdr)
       || ehdr.e_phnum > 1024) 
     {
-      //printf ("load: %s: error loading executable\n", file_name); //No printfs in this file? -- https://k-state.instructure.com/courses/51666/discussion_topics/335992 
+      printf ("load: %s: error loading executable\n", file_name); 
       goto done; 
     }
 
@@ -384,7 +386,7 @@ load (const char *file_name, void (**eip) (void), void **esp, char **arguments)
   //Create argv
   char *argv[CMD_ARGS_MAX];
   int argc =  get_args(file_name, arguments, argv);
-
+  
   //Set up the stack using argv
   if (!setup_stack (esp, argv, argc))
     goto done;
@@ -586,6 +588,24 @@ setup_stack (void **esp, char** argv, int argc)
   return success;
 }
 
+/* Takes a virtual address pointer and verifies that it is within that
+processe's provided virtual adderss space. */
+//See Section 1.5
+bool verify_valid_ptr(const void *virtualaddr)
+{
+	//Need to check:
+	//null pointer
+	//pointer to unmapped virtual memory
+	//pointer to kernel virtual address space
+
+	//If pointer is null or outside user address space
+	if (virtualaddr == NULL || !is_user_vaddr(virtualaddr) || virtualaddr < USER_VADDR_START)
+		return false;//terminate and free resources.
+  
+  return true;
+
+}
+
 //Adapted from https://github.com/pindexis/pintos-project2/blob/master/userprog/process.c (Function originally called 'extract_command_args')
 static int
 get_args(char* file_name, char** arguments, char* argv[])
@@ -593,10 +613,17 @@ get_args(char* file_name, char** arguments, char* argv[])
 	argv[0] = file_name;
 	char *token;
 	int argc = 1;
-	while ((token = strtok_r(NULL, " ", arguments)) != NULL)
+#if 0
+  if( !verify_valid_ptr(*arguments) )
+  {
+    return 0;
+  }
+#endif
+  while ((token = strtok_r(NULL, " ", arguments)) != NULL)
 	{
-		argv[argc++] = token;
+	  argv[argc++] = token;
 	}
+
 	return argc;
 }
 

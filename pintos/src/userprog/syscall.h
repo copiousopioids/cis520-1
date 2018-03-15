@@ -11,5 +11,7 @@ typedef int pid_t;
 void syscall_init (void);
 void close_all_files( void );
 struct process_tracker* pid_lookup(int pid); 
+void exit(int status);
+
 
 #endif /* userprog/syscall.h */

@@ -31,7 +31,7 @@ static void get_arguments(struct intr_frame *f, int *arg, int num_args);
 static void verify_valid_buffer(void* buffer, unsigned size); 
 
 static void halt(void);
-static void exit(int status);
+//static void exit(int status);
 static pid_t exec(const char *cmd_line);
 static int wait(pid_t pid);
 static bool create(const char *file, unsigned initial_size);
@@ -72,10 +72,14 @@ syscall_handler(struct intr_frame *f UNUSED)
 {
 	int args[ARG_LIMIT];
 	
-	verify_valid_ptr((const void*)f->esp);
-	//verify_valid_buffer( f->esp, WORD_SIZE);
-	uint32_t call_nmbr = (*(uint32_t *)f->esp);
+	verify_valid_ptr((const void*)f->esp + 0);
+	verify_valid_ptr((const void*)f->esp + 1);
+	verify_valid_ptr((const void*)f->esp + 2);
+	verify_valid_ptr((const void*)f->esp + 3);
 
+	//verify_valid_buffer( f->esp, sizeof(uint32_t));
+	uint32_t call_nmbr = (*(uint32_t *)f->esp);
+	
 	switch (call_nmbr)
 	{
 	case SYS_HALT:    /* (void) 0 args */
@@ -182,8 +186,8 @@ void verify_valid_ptr(const void *virtualaddr)
 	//pointer to kernel virtual address space
 
 	//If pointer is null or outside user address space
-	if (virtualaddr == NULL || !is_user_vaddr(virtualaddr))//virtualaddr < USER_VADDR_START)
-		exit(-1);//terminate and free resources.
+	if (virtualaddr == NULL || !is_user_vaddr(virtualaddr) || virtualaddr < USER_VADDR_START)
+		exit(ERROR);//terminate and free resources.
 
 }
 
@@ -240,7 +244,7 @@ halt(void)
 	shutdown_power_off();
 }
 
-static void
+void
 exit(int status)
 {
 	struct thread *t = thread_current();
@@ -265,12 +269,16 @@ exec(const char *cmd_line)
 	struct process_tracker* pt = pid_lookup(pid);
 
 	ASSERT(pt);
-
+	
 	//Wait until the process is loaded
-	while (pt->load == NOT_LOADED) barrier(); 
+	while (pt->load == NOT_LOADED) {
+	  barrier();
+	  //printf("inside while\n");
+	}
 
 	//If loading fails something went wrong
-	if (pt->load == LOAD_FAILED) return ERROR; 
+	if (pt->load == LOAD_FAILED) 
+	  return ERROR; 
 
 	//Reaching this means everything is good to go!
 	return pid;
@@ -426,8 +434,9 @@ close(int fd)
 	if (fb)
 	{
 		file_close(fb->file);
+		list_remove(&fb->elem);
 	}
-	lock_release(&fs_lock);
+	lock_release(&fs_lock); 
 }
 
 
@@ -465,7 +474,7 @@ close_all_files( void )
 		fb = list_entry(e, struct file_binder, elem);
 		file_close(fb->file);
 		list_remove(&fb->elem);
-		free(fb);
+		//free(fb);???
 	}
 	lock_release(&fs_lock);
 }
