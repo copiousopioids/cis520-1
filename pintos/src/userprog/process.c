@@ -584,24 +584,6 @@ setup_stack (void **esp, char** argv, int argc)
   return success;
 }
 
-/* Takes a virtual address pointer and verifies that it is within that
-processe's provided virtual adderss space. */
-//See Section 1.5
-bool verify_valid_ptr(const void *virtualaddr)
-{
-	//Need to check:
-	//null pointer
-	//pointer to unmapped virtual memory
-	//pointer to kernel virtual address space
-
-	//If pointer is null or outside user address space
-	if (virtualaddr == NULL || !is_user_vaddr(virtualaddr) || virtualaddr < USER_VADDR_START)
-		return false;//terminate and free resources.
-  
-  return true;
-
-}
-
 //Adapted from https://github.com/pindexis/pintos-project2/blob/master/userprog/process.c (Function originally called 'extract_command_args')
 static int
 get_args(char* file_name, char** arguments, char* argv[])
@@ -609,12 +591,7 @@ get_args(char* file_name, char** arguments, char* argv[])
 	argv[0] = file_name;
 	char *token;
 	int argc = 1;
-#if 0
-  if( !verify_valid_ptr(*arguments) )
-  {
-    return 0;
-  }
-#endif
+
   while ((token = strtok_r(NULL, " ", arguments)) != NULL)
 	{
 	  argv[argc++] = token;

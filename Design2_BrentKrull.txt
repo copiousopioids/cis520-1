@@ -1,0 +1,302 @@
+		           +--------------------------+
+				   |         CIS 520          |
+		           | PROJECT 2: USER PROGRAMS |
+		           |     DESIGN DOCUMENT      |
+		           +--------------------------+
+
+---- GROUP ----
+
+>> Fill in the names of your group members.
+
+Brent Krull
+FirstName LastName
+FirstName LastName
+
+---- PRELIMINARIES ----
+
+>> If you have any preliminary comments on your submission, notes for the
+>> TAs, or extra credit, please give them here.
+
+>> Please cite any offline or online sources you consulted while
+>> preparing your submission, other than the Pintos documentation, course
+>> text, lecture notes, and course staff.
+
+I personally used the folliwng sources when working on this project:
+
+[1] https://github.com/ryantimwilson/Pintos-Project-2/tree/master/src
+[2] https://github.com/codyjack/OS-pintos
+
+My teammates may have used others as well.
+			   ARGUMENT PASSING
+			   ================
+
+---- DATA STRUCTURES ----
+
+>> A1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+--------------------------------------------------------------------------------------------------
+struct cmd_line
+{
+	char *file_name;
+	char *arguments;
+};
+
+Struct used to hold the filename and arguments of a command line
+--------------------------------------------------------------------------------------------------
+struct thread
+  {
+    ...
+
+	  // Need these for file system sys calls
+	  struct list file_list;				      /* List of file_binders */
+	  int next_handle;					          /* Next available fd handle */
+
+	  //Need these for wait/exec sys calls
+	  struct list children;				        /* List of childe processes */
+	  tid_t parent_id;					          /* Parent's tid/pid */
+	  struct process_tracker* pt;			    /* Pointer to the process tracker stored in the parent processes children list */
+
+    ...
+  };
+
+Struct members added to keep track of files, and child threads
+--------------------------------------------------------------------------------------------------
+struct process_tracker 
+{
+	int pid;					    /* Process ID - Essentially the same as tid */
+	enum load_status load;/* The load status of the process */
+	bool wait;					  /* Tracks if the parent is waiting on it */
+	bool exit;					  /* Tracks if exit has been called on it */
+	int exit_status;			/* Process exit status - "Conventionally, a status of 0 indicates success and nonzero values indicate errors.*/
+	struct list_elem elem;/* List element to place in parent's children list */
+};
+--------------------------------------------------------------------------------------------------
+static struct lock fs_lock;
+
+Lock used when accessing files during system calls
+--------------------------------------------------------------------------------------------------
+static struct cmd_line cline;
+
+Instance of cmd_line in kernel space, copied to so that exec calls don't page fault (access other
+ threads memory space)
+--------------------------------------------------------------------------------------------------
+enum load_status
+{
+	NOT_LOADED,
+	LOAD_FAILED,
+	LOADED
+};
+
+Enum used to communicate if a process has been loaded succesfuly
+--------------------------------------------------------------------------------------------------
+#define ARG_LIMIT 3
+
+Value of maximum args possible for system call, used to allocate an array
+--------------------------------------------------------------------------------------------------
+#define USER_VADDR_START ((void *) 0x08048000) // Defined in section 1.4.1 of Project Doc
+
+Value of the start of the user address space
+--------------------------------------------------------------------------------------------------
+#define ERROR -1
+
+Bad error code
+--------------------------------------------------------------------------------------------------
+#define WORD_SIZE sizeof(char *)
+
+Value of the size of a charcter pointer
+--------------------------------------------------------------------------------------------------
+---- ALGORITHMS ----
+
+>> A2: Briefly describe how you implemented argument parsing.  How do
+>> you arrange for the elements of argv[] to be in the right order?
+>> How do you avoid overflowing the stack page?
+
+Use strtok_r to split up the command line and get the arguments. Push the arguments onto the stack
+ in reverse order, and save where each argument is pushed. Align the stack with some modulo math, and
+ push a 0 on, then push the addresses saved before in the corresponding order. Then push the number
+ of args and the fake return address.
+
+---- RATIONALE ----
+
+>> A3: Why does Pintos implement strtok_r() but not strtok()?
+
+The difference between strtok_r() and strtok() is that the save pointer is provided by the caller. 
+
+>> A4: In Pintos, the kernel separates commands into an executable name
+>> and arguments.  In Unix-like systems, the shell does this
+>> separation.  Identify at least two advantages of the Unix approach.
+
+			     SYSTEM CALLS
+			     ============
+
+---- DATA STRUCTURES ----
+
+>> B1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+--------------------------------------------------------------------------------------------------
+struct thread
+  {
+    ...
+
+	  // Need these for file system sys calls
+	  struct list file_list;				      /* List of file_binders */
+	  int next_handle;					          /* Next available fd handle */
+
+	  //Need these for wait/exec sys calls
+	  struct list children;				        /* List of childe processes */
+	  tid_t parent_id;					          /* Parent's tid/pid */
+	  struct process_tracker* pt;			    /* Pointer to the process tracker stored in the parent processes children list */
+
+    ...
+  };
+
+Struct members added to keep track of files, and child threads
+--------------------------------------------------------------------------------------------------
+struct file_binder
+{
+	struct list_elem elem;      /* List element. */
+	struct file *file;          /* File. */
+	int fd;						/* File descriptor handle. */
+};
+
+Struct used to keep track of files that belong to a thread, list elem in thread's 'file_list'
+--------------------------------------------------------------------------------------------------
+>> B2: Describe how file descriptors are associated with open files.
+>> Are file descriptors unique within the entire OS or just within a
+>> single process?
+
+Our implementation has a one to one mapping for each system call. Each thread has a file descriptor
+ that is not shared by any other process.
+
+---- ALGORITHMS ----
+
+>> B3: Describe your code for reading and writing user data from the
+>> kernel.
+
+Read:
+To start veirfy that the pointer through the pointer + the size to read is in valid memory, if it's not
+ return -1. If valid then check the file descriptor and read from standard in or from a file, if a file then
+ acquire the file system lock and use file_read() then release the lock.
+ 
+Write:
+To start verify that the pointer and the pointer through the pointer + size is in valid memory, if it's 
+ not return -1. If valid then check the file descriptor and write to standard out or to a file, if a file then
+ acquire the file system lock and use file_write() then release the lock.
+
+
+>> B4: Suppose a system call causes a full page (4,096 bytes) of data
+>> to be copied from user space into the kernel.  What is the least
+>> and the greatest possible number of inspections of the page table
+>> (e.g. calls to pagedir_get_page()) that might result?  What about
+>> for a system call that only copies 2 bytes of data?  Is there room
+>> for improvement in these numbers, and how much?
+
+For a full page of data there is at least one. If the first inspection is a page head,
+ then no more inspections will be needed. The greatest number could be 4096 if it is not 
+ contiguous. In this case every memory address would need to be inspected.
+ 
+For 2 bytes of data the least will again be 1. If the address has more than 2 bytes to the 
+ end of the page then more inspections are not needed. At most 2 inspections would be needed 
+ if both bytes could not fit on the same page.
+
+>> B5: Briefly describe your implementation of the "wait" system call
+>> and how it interacts with process termination.
+
+Wait calls process_wait(). 
+
+In the stucts above we defined a new sturction called process tracker. This tracker has a list
+ of children that might be waited on, and when the parent waits it looks up the status of the 
+ child from this list using the pid and enters a while loop that calls barrier() until the exit
+ status of the child is true. The child is this removed from the parents list and the exit status
+ of the child is returned.
+
+>> B6: Any access to user program memory at a user-specified address
+>> can fail due to a bad pointer value.  Such accesses must cause the
+>> process to be terminated.  System calls are fraught with such
+>> accesses, e.g. a "write" system call requires reading the system
+>> call number from the user stack, then each of the call's three
+>> arguments, then an arbitrary amount of user memory, and any of
+>> these can fail at any point.  This poses a design and
+>> error-handling problem: how do you best avoid obscuring the primary
+>> function of code in a morass of error-handling?  Furthermore, when
+>> an error is detected, how do you ensure that all temporarily
+>> allocated resources (locks, buffers, etc.) are freed?  In a few
+>> paragraphs, describe the strategy or strategies you adopted for
+>> managing these issues.  Give an example.
+
+First we try to avoid bad memory access by validating pointers before doing any work. For example in 
+ the write system call we first validate the call-number from the stack, then before calling write()
+ we validate the arguments on the stack and the buffer to write. If any addresses are bad then kill the
+ proccess with -1 status.
+
+---- SYNCHRONIZATION ----
+
+>> B7: The "exec" system call returns -1 if loading the new executable
+>> fails, so it cannot return before the new executable has completed
+>> loading.  How does your code ensure this?  How is the load
+>> success/failure status passed back to the thread that calls "exec"?
+
+The exec() method calls process execute() which in turn calls start_process(). Inside start_process()
+ teh parent uses the process tracker struct and sets its load status to LOADED or LOAD_FAILED. In the 
+ exec() call the parent process has entered a while loop that calls barrier() until the created process
+ load status is not NOT_LOADED. Statuses are passed using the process tracker struct.
+
+>> B8: Consider parent process P with child process C.  How do you
+>> ensure proper synchronization and avoid race conditions when P
+>> calls wait(C) before C exits?  After C exits?  How do you ensure
+>> that all resources are freed in each case?  How about when P
+>> terminates without waiting, before C exits?  After C exits?  Are
+>> there any special cases?
+
+---- RATIONALE ----
+
+>> B9: Why did you choose to implement access to user memory from the
+>> kernel in the way that you did?
+
+The TA Chandra recommended that we create functions in syscall.c to copy the data into kernel space
+ so the user could access it.
+
+>> B10: What advantages or disadvantages can you see to your design
+>> for file descriptors?
+ 
+Advantages:
+-The biggest advantage is that this implementation makes sense, to us anyway. It is simple in that it 
+ saves the value of the file descriptor and a pointer to the file, while inserting this information into
+ a list of files that can be easily searched.
+ 
+Disadvantage:
+-There is some overhead that could be minimized here with a more complex solution, and minimze the time 
+  in the loop searching for the file descriptor.
+
+
+>> B11: The default tid_t to pid_t mapping is the identity mapping.
+>> If you changed it, what advantages are there to your approach?
+
+Unchanged
+
+			   SURVEY QUESTIONS
+			   ================
+
+Answering these questions is optional, but it will help us improve the
+course in future quarters.  Feel free to tell us anything you
+want--these questions are just to spur your thoughts.  You may also
+choose to respond anonymously in the course evaluations at the end of
+the quarter.
+
+>> In your opinion, was this assignment, or any one of the three problems
+>> in it, too easy or too hard?  Did it take too long or too little time?
+
+>> Did you find that working on a particular part of the assignment gave
+>> you greater insight into some aspect of OS design?
+
+>> Is there some particular fact or hint we should give students in
+>> future quarters to help them solve the problems?  Conversely, did you
+>> find any of our guidance to be misleading?
+
+>> Do you have any suggestions for the TAs to more effectively assist
+>> students, either for future quarters or the remaining projects?
+
+>> Any other comments?

@@ -42,9 +42,6 @@ static void seek(int fd, unsigned position);
 static unsigned tell(int fd);
 static void close(int fd);
 
-//The bottom of the address space. ??? Already defined above
-//int MAX_USER_VIRTUAL_ADDR = ((void*)0x08048000);
-
 int deref_user_pointer_to_kernel(const void *virtualaddr);
 
 //Lock for file system calls
