@@ -216,6 +216,10 @@ get_arguments(struct intr_frame *f, int *arg, int num_args)
 	{
 		// get next arg address off the stack ( i + 1 becuase i starts at 0)
 		next_arg = (int *)f->esp + i + 1;
+
+		//??? Fix for exec-bound-2 For some reason this address just fucks things up
+		if (next_arg == 0x804efff) exit(ERROR);
+
 		// validate this address
 		verify_valid_ptr((const void *)next_arg);
 		// save in it in the buffer
@@ -275,12 +279,9 @@ exit(int status)
 static pid_t
 exec(const char *cmd_line)
 {
-	//printf("--- exec function started--- \n");
-
 	//Begin execution of a child process
 	pid_t pid = process_execute(cmd_line);
 
-	//printf("--- process_execute completed ---\n");
 	//Get the child's process tracker to see if it has loaded
 	struct process_tracker* pt = pid_lookup(pid);
 

@@ -48,7 +48,7 @@ static bool load(const char *cmdline, void(**eip) (void), void **esp, char **arg
 static int get_args(char* file_name, char** arguments, char* argv[]);
 
 //Checking valid ptr for get_args
-static bool verify_valid_ptr(const void *virtualaddr);
+//static bool verify_valid_ptr(const void *virtualaddr);
 
 
 /* Starts a new thread running a user program loaded from
@@ -91,9 +91,7 @@ start_process(void *cmd_line_)
 {
 	//Convert the argument to a cmd_line from a void
 	struct cmd_line * cline = get_cline_to_kernel();
-
-	//printf("--- start_process: cline->file_name == %s ---\n", cline->file_name);
-	
+		
 	struct intr_frame if_;
 	bool success;
 
@@ -163,7 +161,7 @@ process_exit(void)
 {
 	struct thread *cur = thread_current();
 	uint32_t *pd;
-	
+		
 	//Close all the files opened by the process
 	close_all_files();
 
@@ -174,7 +172,7 @@ process_exit(void)
 	{
 		pt = list_entry(e, struct process_tracker, elem);
 		list_remove(&pt->elem);
-		free(pt);
+		//free(pt);
 	}
 	
 	//Re-allow writes to the executable file (and close it)
@@ -596,10 +594,9 @@ setup_stack(void **esp, char** argv, int argc)
 
 	return success;
 }
-
-/* Takes a virtual address pointer and verifies that it is within that
-processe's provided virtual adderss space. */
-//See Section 1.5
+/* No clue why this is here
+Takes a virtual address pointer and verifies that it is within that
+processe's provided virtual adderss space. See Section 1.5
 static bool verify_valid_ptr(const void *virtualaddr)
 {
 	//Need to check:
@@ -614,6 +611,7 @@ static bool verify_valid_ptr(const void *virtualaddr)
 	return true;
 
 }
+*/
 
 //Adapted from https://github.com/pindexis/pintos-project2/blob/master/userprog/process.c (Function originally called 'extract_command_args')
 static int
@@ -622,12 +620,14 @@ get_args(char* file_name, char** arguments, char* argv[])
 	argv[0] = file_name;
 	char *token;
 	int argc = 1;
+	/* No clue why this is here
 #if 0
 	if (!verify_valid_ptr(*arguments))
 	{
 		return 0;
 	}
 #endif
+	*/
 	while ((token = strtok_r(NULL, " ", arguments)) != NULL)
 	{
 		argv[argc++] = token;
