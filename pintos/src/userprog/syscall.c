@@ -26,7 +26,7 @@ static struct file_binder* fd_lookup(int fd);
 static void syscall_handler(struct intr_frame *);
 static void verify_valid_ptr(const void *vaddr);
 static void get_arguments(struct intr_frame *f, int *arg, int num_args);
-static void verify_valid_buffer(void* buffer, unsigned size); 
+static void verify_valid_buffer(void* buffer, unsigned size);
 
 static void halt(void);
 //static void exit(int status);
@@ -72,7 +72,7 @@ static void
 syscall_handler(struct intr_frame *f UNUSED)
 {
 	int args[ARG_LIMIT];
-	
+
 	verify_valid_ptr((const void*)f->esp + 0);
 	verify_valid_ptr((const void*)f->esp + 1);
 	verify_valid_ptr((const void*)f->esp + 2);
@@ -80,7 +80,7 @@ syscall_handler(struct intr_frame *f UNUSED)
 
 	//verify_valid_buffer( f->esp, sizeof(uint32_t));
 	uint32_t call_nmbr = (*(uint32_t *)f->esp);
-	
+
 	switch (call_nmbr)
 	{
 	case SYS_HALT:    /* (void) 0 args */
@@ -223,7 +223,7 @@ get_arguments(struct intr_frame *f, int *arg, int num_args)
 	}
 }
 
-static void 
+static void
 verify_valid_buffer(void* buffer, unsigned size)
 {
 	char* local_buffer = (char *)buffer;
@@ -238,8 +238,8 @@ verify_valid_buffer(void* buffer, unsigned size)
 	access their aruments (needed for exec) */
 void add_cline_to_kernel(void* cline_)
 {
-  cline.file_name = ((struct cmd_line *)cline_)->file_name;
-  cline.arguments = ((struct cmd_line *)cline_)->arguments;
+	cline.file_name = ((struct cmd_line *)cline_)->file_name;
+	cline.arguments = ((struct cmd_line *)cline_)->arguments;
 }
 
 /* get the cmd_line from the kernel memory space (needed for exec) */
@@ -261,13 +261,13 @@ void
 exit(int status)
 {
 	struct thread *t = thread_current();
-
-	/*If the parent process is still alive then update the process tracker
-	so that it can find the exit status */
-	if (thread_alive(t->parent_id)) t->pt->exit_status = status;
+	
+	//Update the process tracker so that it can find the exit status 
+	t->pt->exit_status = status;
 
 	t->pt->exit = true; //FIX?: Added this line to show that (child) thread has called exit
 	//Process termination message. Thread name is set in process_execute
+	//printf("--- exit syscall: %s->pt->exit_status == %i --- \n", t->name, t->pt->exit_status);
 	printf("%s: exit(%d)\n", t->name, status);
 	thread_exit();
 }
@@ -275,23 +275,26 @@ exit(int status)
 static pid_t
 exec(const char *cmd_line)
 {
+	//printf("--- exec function started--- \n");
+
 	//Begin execution of a child process
 	pid_t pid = process_execute(cmd_line);
 
+	//printf("--- process_execute completed ---\n");
 	//Get the child's process tracker to see if it has loaded
 	struct process_tracker* pt = pid_lookup(pid);
 
 	ASSERT(pt);
-	
+
 	//Wait until the process is loaded
 	while (pt->load == NOT_LOADED) {
-	  barrier();
-	  //printf("inside while\n");
+		barrier();
+		//printf("inside while\n");
 	}
 
 	//If loading fails something went wrong
-	if (pt->load == LOAD_FAILED) 
-	  return ERROR; 
+	if (pt->load == LOAD_FAILED)
+		return ERROR;
 
 	//Reaching this means everything is good to go!
 	return pid;
@@ -307,7 +310,7 @@ static bool
 create(const char *file, unsigned initial_size)
 {
 	lock_acquire(&fs_lock);
-	bool success = filesys_create(file, initial_size); 
+	bool success = filesys_create(file, initial_size);
 	lock_release(&fs_lock);
 	return success;
 }
@@ -449,15 +452,15 @@ close(int fd)
 		file_close(fb->file);
 		list_remove(&fb->elem);
 	}
-	lock_release(&fs_lock); 
+	lock_release(&fs_lock);
 }
 
 
 /* Helpers */
 
 /* Returns the file_binder associated with the given fd or NULL if there is none */
-struct file_binder* 
-fd_lookup(int fd)
+struct file_binder*
+	fd_lookup(int fd)
 {
 	struct thread *cur = thread_current();
 	struct list_elem *e;
@@ -474,8 +477,8 @@ fd_lookup(int fd)
 	return NULL;
 }
 
-void 
-close_all_files( void )
+void
+close_all_files(void)
 {
 	lock_acquire(&fs_lock);
 	struct thread *cur = thread_current();
@@ -492,8 +495,8 @@ close_all_files( void )
 	lock_release(&fs_lock);
 }
 
-struct process_tracker* 
-pid_lookup(int pid) 
+struct process_tracker*
+	pid_lookup(int pid)
 {
 	struct thread *cur = thread_current();
 	struct list_elem *e;

@@ -831,21 +831,3 @@ struct process_tracker* initialize_process_tracker(int pid)
 	return cp;
 }
 
-
-/* Go through the list of active threads and return true if 'id' is equal to the id 
-    of a thread in the list */
-bool
-thread_alive( tid_t id )
-{
-  //Look for 'id' in 'all_list'
-  struct thread *t;
-  struct list_elem *e;
-  for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e))
-  {
-    t = list_entry(e, struct thread, elem);
-	  if(t->parent_id == id)
-      return true;
-  }
-  
-  return false;
-}
